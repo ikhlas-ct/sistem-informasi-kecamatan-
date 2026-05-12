@@ -1,0 +1,5 @@
+          <td>
+                                        <span title="{{ $item->alasan_pembuatan }}" data-bs-toggle="tooltip" data-bs-placement="top">
+                                            {{ Str::words($item->alasan_pembuatan, 3, '...') ?? 'Tidak ada data' }}
+                                        </span>
+                                    </td>
