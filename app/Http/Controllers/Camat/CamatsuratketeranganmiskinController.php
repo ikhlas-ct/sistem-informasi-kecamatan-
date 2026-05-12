@@ -165,7 +165,7 @@ class CamatsuratketeranganmiskinController extends Controller
 
         public function print($id)
     {
-        $surat = Suratketeranganmiskin::with('masyarakat')->findOrFail($id);
+        $surat = Suratketeranganmiskin::with('masyarakat.nagari')->findOrFail($id);
         $tanggungan = $surat->anggota;
         $surat->batas_penghasilan = $surat->pendapatan ?? 0;
 

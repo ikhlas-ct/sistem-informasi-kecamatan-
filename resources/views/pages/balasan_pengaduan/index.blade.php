@@ -387,7 +387,7 @@
                                     <div class="avatar-circle">{{ $inisial }}</div>
                                     <div>
                                         <div class="fw-semibold" style="font-size:.82rem;color:#1e293b;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                                            {{ $namaMasyarakat }}
+                                            {{ $item->masyarakat->nama_masyarakat ?? '-' }}
                                         </div>
                                         @if($item->masyarakat && $item->masyarakat->nagari)
                                             <div style="font-size:.72rem;color:#94a3b8;">

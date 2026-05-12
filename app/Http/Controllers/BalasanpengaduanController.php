@@ -103,7 +103,7 @@ class BalasanpengaduanController extends Controller
                 $q->where('judul_pengaduan', 'like', "%{$search}%")
                     ->orWhere('hal_pengaduan',  'like', "%{$search}%")
                     ->orWhereHas('masyarakat', function ($q2) use ($search) {
-                        $q2->where('nama', 'like', "%{$search}%");
+                        $q2->where('nama_masyarakat', 'like', "%{$search}%");
                     });
             });
         }

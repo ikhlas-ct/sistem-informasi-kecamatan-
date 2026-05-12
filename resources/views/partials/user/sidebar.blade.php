@@ -50,7 +50,7 @@
                     <h4 class="text-section">Komponen</h4>
                 </li>
 
-       
+
                      <li class="nav-item">
                     <a href="{{ route('kecamatan.setting.edit') }}">
                         <i class="fas fa-cogs"></i>
@@ -63,7 +63,7 @@
                 </li>
 
 
-          
+
                     <li class="nav-item">
                     <a href="{{ route('camat.nagari.index') }}">
                         <i class="fas fa-home"></i>
@@ -232,7 +232,7 @@
                     </div>
                 </li>
 
-      
+
                 {{-- Bagian Pengaduan --}}
                 <li class="nav-section">
                     <span class="sidebar-mini-icon">
@@ -399,6 +399,12 @@
                         <p>Dashboard</p>
                     </a>
                 </li>
+                  <li class="nav-item">
+                    <a href="{{ route('pegawai.profil') }}">
+                        <i class="fas fa-user"></i>
+                        <p>Profile</p>
+                    </a>
+                </li>
 
                 <!-- Konten -->
                 <li class="nav-item">
@@ -429,12 +435,7 @@
                     </div>
                 </li>
 
-                <li class="nav-item">
-                    <a href="{{ route('dokumen.kategori.index') }}">
-                        <i class="fas fa-folder"></i>
-                        <p>Kategori Dokumen</p>
-                    </a>
-                </li>
+
 
                 <!-- Surat -->
                 @can('canAccessSuratKeteranganMiskinPegawaiNagari', auth()->user())
