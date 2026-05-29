@@ -11,6 +11,7 @@ use App\Http\Controllers\Home\HomeController;
 use App\Http\Controllers\KecamatanSettingController;
 use App\Http\Controllers\Konten\KontenController;
 use App\Http\Controllers\Login\AuthController;
+use App\Http\Controllers\MadingController;
 use App\Http\Controllers\Masyarakat\MasyarakatController;
 use App\Http\Controllers\Masyarakat\ProfilmasyarakatController;
 use App\Http\Controllers\Masyarakat\SuratketeranganmiskinController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Pegawai\ProfilpegawaiController;
 use App\Http\Controllers\Pegawai\UrussuratketeranganmiskinController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\PengaduanController;
+use App\Http\Controllers\SekolahController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -114,6 +116,19 @@ Route::middleware('auth')->group(function () {
 
     // Detail pengaduan
     Route::get('/pengaduan/{id}', [PengaduanController::class, 'show'])->name('pengaduan.show');
+
+
+
+
+    Route::get('/sekolah',                          [SekolahController::class, 'index'])->name('sekolah.index');
+    Route::get('/sekolah/create',                   [SekolahController::class, 'create'])->name('sekolah.create');
+    Route::post('/sekolah',                         [SekolahController::class, 'store'])->name('sekolah.store');
+    Route::get('/sekolah/{sekolah}',                [SekolahController::class, 'show'])->name('sekolah.show');
+    Route::get('/sekolah/{sekolah}/edit',           [SekolahController::class, 'edit'])->name('sekolah.edit');
+    Route::put('/sekolah/{sekolah}',                [SekolahController::class, 'update'])->name('sekolah.update');
+    Route::delete('/sekolah/{sekolah}',             [SekolahController::class, 'destroy'])->name('sekolah.destroy');
+    Route::patch('/sekolah/{sekolah}/toggle-status', [SekolahController::class, 'toggleStatus'])->name('sekolah.toggle-status');
+    Route::get('/sekolah-ajax/user-by-nagari',      [SekolahController::class, 'getUserByNagari'])->name('sekolah.ajax.user-by-nagari');
 });
 
 
@@ -216,6 +231,29 @@ Route::prefix('masyarakat')->middleware(['auth', 'role:masyarakat'])->group(func
 
     // Hapus pengaduan
     Route::delete('/pengaduan/{id}', [PengaduanController::class, 'destroy'])->name('pengaduan.destroy');
+
+
+
+
+    Route::get('/mading',                    [MadingController::class, 'index'])->name('mading.index');
+
+    // ── Tambah mading ──────────────────────────────
+    Route::get('/mading/tambah',              [MadingController::class, 'create'])->name('mading.create');
+    Route::post('/mading/tambah',             [MadingController::class, 'store'])->name('mading.store');
+
+    // ── Edit mading ────────────────────────────────
+    Route::get('/mading/{id_mading}/edit',    [MadingController::class, 'edit'])->name('mading.edit');
+    Route::put('/mading/{id_mading}/edit',    [MadingController::class, 'update'])->name('mading.update');
+
+    // ── Hapus mading ───────────────────────────────
+    Route::delete('/mading/{id_mading}',      [MadingController::class, 'destroy'])->name('mading.destroy');
+
+    // ── Approve & Reject (sekolah saja) ────────────
+    Route::post('/mading/{id_mading}/approve', [MadingController::class, 'approve'])->name('mading.approve');
+    Route::post('/mading/{id_mading}/reject',  [MadingController::class, 'reject'])->name('mading.reject');
+
+    // ── Hapus lampiran via AJAX ─────────────────────
+    Route::delete('/mading/lampiran/{id}',    [MadingController::class, 'destroyLampiran'])->name('mading.lampiran.destroy');
 });
 
 

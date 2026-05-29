@@ -14,6 +14,7 @@ class Reaksi extends Model
 
     protected $fillable = [
         'id_konten',
+        'id_mading',
         'id_user',
         'jenis',
         'ip_address',
@@ -27,5 +28,11 @@ class Reaksi extends Model
     public function konten()
     {
         return $this->belongsTo(Konten::class, 'id_konten', 'id_konten');
+    }
+
+    // Relasi ke Mading (jika reaksi ini untuk mading)
+    public function mading()
+    {
+        return $this->belongsTo(Mading::class, 'id_mading', 'id_mading');
     }
 }

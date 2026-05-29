@@ -89,6 +89,18 @@ class User extends Authenticatable
         return $this->hasMany(Komentar::class, 'id_user', 'id');
     }
 
+    // Relasi ke Sekolah (jika role = sekolah)
+    public function sekolah()
+    {
+        return $this->hasOne(Sekolah::class, 'id_user', 'id');
+    }
+
+    // Relasi ke Siswa (jika role = siswa)
+    public function siswa()
+    {
+        return $this->hasOne(Siswa::class, 'id_user', 'id');
+    }
+
     public function isSuperAdmin(): bool
     {
         if ($this->role === 'camat') return true;
@@ -106,7 +118,8 @@ class User extends Authenticatable
             if (! $pegawai || is_null($pegawai->id_nagari)) return 'staf_camat';
             return $pegawai->jabatan_nagari === 'kepala_nagari' ? 'wali_nagari' : 'staf_nagari';
         }
+        if ($this->role === 'sekolah') return 'sekolah';
+        if ($this->role === 'siswa')   return 'siswa';
         return 'masyarakat';
     }
 }
-

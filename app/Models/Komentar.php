@@ -16,6 +16,7 @@ class Komentar extends Model
 
     protected $fillable = [
         'id_konten',
+        'id_mading',
         'nama',
         'email',
         'no_hp',
@@ -36,6 +37,12 @@ class Komentar extends Model
         return $this->belongsTo(Konten::class, 'id_konten', 'id_konten');
     }
 
+    // Relasi ke Mading (jika komentar ini untuk mading)
+    public function mading()
+    {
+        return $this->belongsTo(Mading::class, 'id_mading', 'id_mading');
+    }
+
     public function parent()
     {
         return $this->belongsTo(Komentar::class, 'parent_id', 'id_komentar');
@@ -47,27 +54,25 @@ class Komentar extends Model
     }
 
     public function root()
-{
-    return $this->belongsTo(Komentar::class, 'root_id', 'id_komentar');
-}
-
-protected $appends = ['avatar_url'];
-
-public function getAvatarUrlAttribute(): string
-{
-    // Kalau ada user dan pegawai punya foto
-    if ($this->user && $this->user->pegawai && $this->user->pegawai->foto_profil) {
-        return Storage::url($this->user->pegawai->foto_profil);
+    {
+        return $this->belongsTo(Komentar::class, 'root_id', 'id_komentar');
     }
 
-    // Kalau ada user dan masyarakat punya foto
-    if ($this->user && $this->user->masyarakat && $this->user->masyarakat->foto_profil) {
-        return Storage::url($this->user->masyarakat->foto_profil);
+    protected $appends = ['avatar_url'];
+
+    public function getAvatarUrlAttribute(): string
+    {
+        // Kalau ada user dan pegawai punya foto
+        if ($this->user && $this->user->pegawai && $this->user->pegawai->foto_profil) {
+            return Storage::url($this->user->pegawai->foto_profil);
+        }
+
+        // Kalau ada user dan masyarakat punya foto
+        if ($this->user && $this->user->masyarakat && $this->user->masyarakat->foto_profil) {
+            return Storage::url($this->user->masyarakat->foto_profil);
+        }
+
+        // Fallback default
+        return asset('default-image/default-user.png');
     }
-
-    // Fallback default
-    return asset('default-image/default-user.png');
-}
-
-
 }
