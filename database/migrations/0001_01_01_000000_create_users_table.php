@@ -17,6 +17,10 @@ return new class extends Migration
             $table->string('password');
             $table->enum('role', ['camat', 'pegawai', 'masyarakat']);
             $table->enum('status', ['aktif', 'nonaktif'])->default('aktif');
+            $table->enum('tipe_akun', ['admin', 'siswa'])
+                ->default('siswa')
+                ->after('status');
+
 
             $table->rememberToken();
             $table->timestamps();

@@ -2,6 +2,10 @@
 
 @section('title', 'Detail Sekolah – ' . $sekolah->nama_sekolah)
 
+@php
+    $bisaCRUD = $roleLabel !== 'admin_sekolah';
+@endphp
+
 @section('styles')
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -41,6 +45,7 @@
     .badge-aktif    { background:#dcfce7; color:#15803d; font-size:.72rem; padding:4px 12px; border-radius:20px; font-weight:600; }
     .badge-nonaktif { background:#fee2e2; color:#b91c1c; font-size:.72rem; padding:4px 12px; border-radius:20px; font-weight:600; }
     .badge-jenjang  { background:var(--accent-light); color:var(--accent); font-size:.72rem; padding:4px 12px; border-radius:20px; font-weight:600; }
+    .badge-role     { background:#e0f2fe; color:#0369a1; font-size:.72rem; padding:4px 12px; border-radius:20px; font-weight:600; }
 
     /* ── Stat mini ── */
     .stat-mini { background:#f8fafc; border-radius:10px; padding:12px 16px; text-align:center; border:1px solid #f1f5f9; }
@@ -51,6 +56,11 @@
     .btn-edit-page:hover { background:#0f766e; color:#fff; }
     .btn-back { border-radius:9px; font-size:.83rem; border:1.5px solid #e2e8f0; color:#64748b; padding:7px 16px; }
     .btn-back:hover { background:#f8fafc; }
+    .btn-toggle-on  { background:#dcfce7; color:#15803d; }
+    .btn-toggle-on:hover  { background:#15803d; color:#fff; }
+    .btn-toggle-off { background:#fee2e2; color:#b91c1c; }
+    .btn-toggle-off:hover { background:#b91c1c; color:#fff; }
+    .btn-hapus:hover { background:#dc2626 !important; color:#fff !important; }
 </style>
 @endsection
 
@@ -69,10 +79,33 @@
                 </ol>
             </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('sekolah.edit', $sekolah->id_sekolah) }}" class="btn btn-edit-page btn-sm">
                 <i class="fas fa-pencil-alt me-1"></i> Edit
             </a>
+            @if($bisaCRUD)
+            <button id="btn-toggle-status"
+                    class="btn btn-sm {{ $sekolah->status === 'aktif' ? 'btn-toggle-on' : 'btn-toggle-off' }}"
+                    style="border-radius:9px;font-size:.83rem;font-weight:600;padding:7px 14px;border:none;"
+                    data-id="{{ $sekolah->id_sekolah }}"
+                    data-status="{{ $sekolah->status }}"
+                    title="{{ $sekolah->status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }}">
+                <i class="fas fa-{{ $sekolah->status === 'aktif' ? 'toggle-on' : 'toggle-off' }} me-1"></i>
+                {{ $sekolah->status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }}
+            </button>
+            <button class="btn btn-sm btn-hapus btn-confirm-hapus"
+                    style="background:#fee2e2;color:#dc2626;border:none;border-radius:9px;font-size:.83rem;font-weight:600;padding:7px 14px;"
+                    data-id="{{ $sekolah->id_sekolah }}"
+                    data-nama="{{ $sekolah->nama_sekolah }}"
+                    title="Hapus">
+                <i class="fas fa-trash-alt me-1"></i> Hapus
+            </button>
+            <form id="form-hapus-{{ $sekolah->id_sekolah }}"
+                  action="{{ route('sekolah.destroy', $sekolah->id_sekolah) }}"
+                  method="POST" class="d-none">
+                @csrf @method('DELETE')
+            </form>
+            @endif
             <a href="{{ route('sekolah.index') }}" class="btn btn-back btn-sm">
                 <i class="fas fa-arrow-left me-1"></i> Kembali
             </a>
@@ -142,11 +175,24 @@
                     </div>
                     <div class="detail-row">
                         <div class="detail-label"><i class="fas fa-user me-2 text-muted"></i>Nama</div>
-                        <div class="detail-value">{{ $sekolah->user->masyarakat?->nama ?? '-' }}</div>
+                        {{-- Perbaikan: field yang benar adalah nama_masyarakat bukan nama --}}
+                        <div class="detail-value">{{ $sekolah->user->masyarakat?->nama_masyarakat ?? '-' }}</div>
                     </div>
                     <div class="detail-row">
                         <div class="detail-label"><i class="fas fa-tag me-2 text-muted"></i>Role</div>
-                        <div class="detail-value">{{ ucfirst($sekolah->user->role) }}</div>
+                        <div class="detail-value">
+                            <span class="badge-role">{{ ucfirst($sekolah->user->role) }}</span>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label"><i class="fas fa-circle me-2 text-muted"></i>Status Akun</div>
+                        <div class="detail-value">
+                            @if($sekolah->user->status === 'aktif')
+                                <span style="color:#16a34a;font-weight:600;font-size:.82rem;"><i class="fas fa-check-circle me-1"></i>Aktif</span>
+                            @else
+                                <span style="color:#dc2626;font-weight:600;font-size:.82rem;"><i class="fas fa-ban me-1"></i>Nonaktif</span>
+                            @endif
+                        </div>
                     </div>
                     @else
                     <div class="text-muted" style="font-size:.84rem;">Tidak ada administrator yang ditetapkan.</div>
@@ -225,4 +271,56 @@
     </div>
 
 </div>
+@endsection
+
+@section('scripts')
+@if($bisaCRUD)
+<script>
+// ── Hapus ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.btn-confirm-hapus').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const id   = this.dataset.id;
+        const nama = this.dataset.nama;
+        swal({
+            title: 'Hapus Sekolah?',
+            text: `"${nama}" akan dihapus permanen beserta logo-nya.`,
+            icon: 'warning',
+            buttons: { cancel: 'Batal', confirm: { text: 'Ya, Hapus!', className: 'btn-danger' } },
+            dangerMode: true,
+        }).then(ok => { if (ok) document.getElementById('form-hapus-' + id).submit(); });
+    });
+});
+
+// ── Toggle Status ──────────────────────────────────────────────────────
+const toggleBtn = document.getElementById('btn-toggle-status');
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', function () {
+        const id     = this.dataset.id;
+        const status = this.dataset.status;
+        const label  = status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan';
+
+        swal({
+            title: label + ' Sekolah?',
+            text: 'Status sekolah akan diubah.',
+            icon: 'warning',
+            buttons: { cancel: 'Batal', confirm: { text: 'Ya, Ubah!', className: 'btn-warning' } },
+        }).then(ok => {
+            if (!ok) return;
+            fetch(`/sekolah/${id}/toggle-status`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+            })
+            .then(r => r.json())
+            .then(data => {
+                swal('Berhasil', data.message, 'success').then(() => location.reload());
+            })
+            .catch(() => swal('Gagal', 'Terjadi kesalahan.', 'error'));
+        });
+    });
+}
+</script>
+@endif
 @endsection

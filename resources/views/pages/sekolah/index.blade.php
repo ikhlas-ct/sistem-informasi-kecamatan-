@@ -4,12 +4,15 @@
 
 @php
     $roleBadge = match ($roleLabel) {
-        'camat'       => ['text' => 'Camat (Superadmin)',       'bg' => '#1a73e8'],
-        'staf_camat'  => ['text' => 'Staf Camat (Superadmin)',  'bg' => '#6366f1'],
-        'wali_nagari' => ['text' => 'Wali Nagari',              'bg' => '#0d9488'],
-        'staf_nagari' => ['text' => 'Staf Nagari',              'bg' => '#16a34a'],
-        default       => ['text' => $roleLabel,                 'bg' => '#64748b'],
+        'camat'         => ['text' => 'Camat (Superadmin)',       'bg' => '#1a73e8'],
+        'staf_camat'    => ['text' => 'Staf Camat (Superadmin)',  'bg' => '#6366f1'],
+        'wali_nagari'   => ['text' => 'Wali Nagari',              'bg' => '#0d9488'],
+        'staf_nagari'   => ['text' => 'Staf Nagari',              'bg' => '#16a34a'],
+        'admin_sekolah' => ['text' => 'Admin Sekolah',            'bg' => '#d97706'],
+        default         => ['text' => $roleLabel,                 'bg' => '#64748b'],
     };
+    // Hak aksi: admin sekolah hanya bisa lihat & edit sekolah miliknya
+    $bisaCRUD = $roleLabel !== 'admin_sekolah';
 @endphp
 
 @section('styles')
@@ -288,9 +291,11 @@
             <span class="badge-role" style="background:{{ $roleBadge['bg'] }};">
                 <i class="fas fa-user-shield me-1"></i>{{ $roleBadge['text'] }}
             </span>
+            @if($bisaCRUD)
             <a href="{{ route('sekolah.create') }}" class="btn btn-primary btn-sm px-3">
                 <i class="fas fa-plus me-1"></i> Tambah Sekolah
             </a>
+            @endif
         </div>
     </div>
 
@@ -368,7 +373,7 @@
                     </div>
                 </div>
 
-                {{-- Filter Nagari (camat / staf camat) --}}
+                {{-- Filter Nagari (camat / staf camat = superadmin) --}}
                 @if(in_array($roleLabel, ['camat','staf_camat']))
                 <div class="col-md-2">
                     <select name="id_nagari" class="form-select form-select-sm">
@@ -509,15 +514,18 @@
                                     <i class="fas fa-pencil-alt"></i>
                                 </a>
 
-                                {{-- Toggle Status --}}
+                                {{-- Toggle Status: camat, staf camat, pegawai nagari --}}
+                                @if($bisaCRUD)
                                 <button class="btn btn-action {{ $item->status === 'aktif' ? 'btn-toggle-on' : 'btn-toggle-off' }} btn-toggle-status"
                                         data-id="{{ $item->id_sekolah }}"
                                         data-status="{{ $item->status }}"
                                         title="{{ $item->status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }}">
                                     <i class="fas fa-{{ $item->status === 'aktif' ? 'toggle-on' : 'toggle-off' }}"></i>
                                 </button>
+                                @endif
 
-                                {{-- Hapus --}}
+                                {{-- Hapus: camat, staf camat, pegawai nagari --}}
+                                @if($bisaCRUD)
                                 <button class="btn btn-action btn-hapus btn-confirm-hapus"
                                         data-id="{{ $item->id_sekolah }}"
                                         data-nama="{{ $item->nama_sekolah }}"
@@ -529,6 +537,7 @@
                                       method="POST" class="d-none">
                                     @csrf @method('DELETE')
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -543,9 +552,11 @@
                                 <div class="text-muted" style="font-size:.8rem;">
                                     Coba ubah filter atau tambahkan data baru
                                 </div>
+                                @if($bisaCRUD)
                                 <a href="{{ route('sekolah.create') }}" class="btn btn-primary btn-sm mt-3">
                                     <i class="fas fa-plus me-1"></i> Tambah Sekarang
                                 </a>
+                                @endif
                             </div>
                         </td>
                     </tr>

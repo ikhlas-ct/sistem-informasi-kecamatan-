@@ -18,14 +18,7 @@ return new class extends Migration
             $table->string('kelas', 20)->nullable();
             $table->string('foto_profil')->nullable();
 
-            // Status bergabung ke sekolah
-            // pending  → siswa daftar sendiri, nunggu approval sekolah
-            // approved → sudah disetujui / sekolah yang input langsung
-            // rejected → ditolak sekolah
-            $table->enum('status_verifikasi', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->text('alasan_penolakan')->nullable();
-
-            $table->timestamps();
+                      $table->timestamps();
         });
     }
 

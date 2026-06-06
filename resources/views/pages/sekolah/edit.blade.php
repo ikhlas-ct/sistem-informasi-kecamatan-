@@ -55,6 +55,8 @@
 
     .hapus-logo-wrap { margin-top:10px; }
     .hapus-logo-wrap label { font-size:.78rem; color:#dc2626; cursor:pointer; display:flex; align-items:center; gap:6px; }
+
+    .spinner-border-sm { width:1rem; height:1rem; }
 </style>
 @endsection
 
@@ -69,11 +71,12 @@
                 <h5 class="ph-title">Edit Sekolah</h5>
                 <ol class="ph-breadcrumb">
                     <li><a href="{{ route('sekolah.index') }}">Data Sekolah</a></li>
-                    <li><span class="bc-active">{{ Str::limit($sekolah->nama_sekolah, 40) }}</span></li>
+                    <li><a href="{{ route('sekolah.show', $sekolah->id_sekolah) }}">{{ Str::limit($sekolah->nama_sekolah, 30) }}</a></li>
+                    <li><span class="bc-active">Edit</span></li>
                 </ol>
             </div>
         </div>
-        <a href="{{ route('sekolah.index') }}" class="btn btn-cancel btn-sm">
+        <a href="{{ route('sekolah.show', $sekolah->id_sekolah) }}" class="btn btn-cancel btn-sm">
             <i class="fas fa-arrow-left me-1"></i> Kembali
         </a>
     </div>
@@ -183,6 +186,7 @@
                             <label>Nagari <span class="required-mark">*</span></label>
 
                             @if($bisaPilihNagari)
+                                {{-- Camat / Staf Camat: bebas pilih nagari --}}
                                 <select id="id_nagari" name="id_nagari"
                                         class="form-select @error('id_nagari') is-invalid @enderror"
                                         onchange="onNagariChange(this.value)">
@@ -197,12 +201,16 @@
                                 @error('id_nagari')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                <div class="form-text">Mengubah nagari akan mereset pilihan administrator.</div>
+
                             @else
+                                {{-- Kepala / Staf Nagari: nagari terkunci --}}
                                 <div class="nagari-locked">
-                                    <i class="fas fa-map-marker-alt"></i>
+                                    <i class="fas fa-lock"></i>
                                     {{ $nagariTerpilih?->nama_nagari ?? $sekolah->nagari?->nama_nagari ?? '-' }}
                                     <span style="font-size:.75rem;font-weight:400;color:#64748b;margin-left:4px;">(otomatis)</span>
                                 </div>
+                                <input type="hidden" name="id_nagari" value="{{ $nagariTerpilih?->id ?? $sekolah->id_nagari }}">
                             @endif
                         </div>
 
@@ -211,34 +219,43 @@
                             <label for="id_user">Kepala Sekolah / Administrator <span class="required-mark">*</span></label>
 
                             @if($bisaPilihNagari)
+                                {{-- Camat / Staf Camat: dimuat via AJAX --}}
                                 <select id="id_user" name="id_user"
                                         class="form-select @error('id_user') is-invalid @enderror">
                                     <option value="">-- Memuat... --</option>
                                 </select>
                                 <div id="user-loading" class="form-text d-none">
-                                    <span class="spinner-border spinner-border-sm text-secondary me-1" style="width:1rem;height:1rem;"></span> Memuat data...
+                                    <span class="spinner-border spinner-border-sm text-secondary me-1"></span> Memuat data...
                                 </div>
                                 @error('id_user')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                                 <div class="form-text">Mengubah nagari akan mereset pilihan administrator.</div>
+
                             @else
+                                {{-- Kepala / Staf Nagari: tampilkan daftar masyarakat nagarinya --}}
                                 <select id="id_user" name="id_user"
                                         class="form-select @error('id_user') is-invalid @enderror">
                                     <option value="">-- Pilih Administrator --</option>
-                                    @foreach($userMasyarakat as $u)
+                                    @forelse($userMasyarakat as $u)
                                         <option value="{{ $u->id }}"
                                             {{ old('id_user', $sekolah->id_user) == $u->id ? 'selected' : '' }}>
                                             {{ $u->nip_nik }}
                                             @if($u->masyarakat?->nama_masyarakat)
                                                 – {{ $u->masyarakat->nama_masyarakat }}
                                             @endif
+                                            @if($u->id == $sekolah->id_user)
+                                                (Admin Saat Ini)
+                                            @endif
                                         </option>
-                                    @endforeach
+                                    @empty
+                                        <option disabled>Tidak ada masyarakat tersedia</option>
+                                    @endforelse
                                 </select>
                                 @error('id_user')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                <div class="form-text">Admin yang ditandai "(Admin Saat Ini)" adalah administrator aktif sekolah ini.</div>
                             @endif
                         </div>
 
@@ -285,7 +302,8 @@
                     </div>
                 </div>
 
-                {{-- Status --}}
+                {{-- Status: hanya camat, pegawai kecamatan & pegawai nagari --}}
+                @if($roleLabel !== 'admin_sekolah')
                 <div class="card section-card">
                     <div class="card-body">
                         <div class="section-divider"><i class="fas fa-cog"></i> Status</div>
@@ -307,13 +325,34 @@
                         @enderror
                     </div>
                 </div>
+                @else
+                {{-- Admin sekolah: tampilkan status sebagai info saja (tidak bisa diubah) --}}
+                <div class="card section-card">
+                    <div class="card-body">
+                        <div class="section-divider"><i class="fas fa-cog"></i> Status</div>
+                        <div class="d-flex align-items-center gap-2"
+                             style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 14px;">
+                            @if($sekolah->status === 'aktif')
+                                <i class="fas fa-check-circle" style="color:#16a34a;"></i>
+                                <span style="font-size:.84rem;font-weight:600;color:#16a34a;">Aktif</span>
+                            @else
+                                <i class="fas fa-ban" style="color:#dc2626;"></i>
+                                <span style="font-size:.84rem;font-weight:600;color:#dc2626;">Nonaktif</span>
+                            @endif
+                            <span class="ms-auto text-muted" style="font-size:.75rem;">
+                                <i class="fas fa-lock me-1"></i> Hanya dapat diubah oleh admin nagari / camat
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                @endif
 
                 {{-- Tombol --}}
                 <div class="d-flex gap-2 flex-column">
                     <button type="submit" class="btn btn-submit w-100">
                         <i class="fas fa-save me-2"></i> Simpan Perubahan
                     </button>
-                    <a href="{{ route('sekolah.index') }}" class="btn btn-cancel text-center">
+                    <a href="{{ route('sekolah.show', $sekolah->id_sekolah) }}" class="btn btn-cancel text-center">
                         <i class="fas fa-times me-1"></i> Batal
                     </a>
                 </div>
@@ -327,7 +366,7 @@
 
 @section('scripts')
 <script>
-// ── Logo preview ──────────────────────────────────
+// ── Logo preview ─────────────────────────────────
 const logoInput   = document.getElementById('logo-input');
 const logoPreview = document.getElementById('logo-preview');
 const logoHolder  = document.getElementById('logo-placeholder');
@@ -366,9 +405,10 @@ logoInput.addEventListener('change', function () {
     });
 });
 
-// ── AJAX: load user by nagari (camat & staf camat) ──
+// ── AJAX: load user by nagari (hanya camat & staf camat) ──
 @if($bisaPilihNagari)
-const sekolahId = {{ $sekolah->id_sekolah }};
+const sekolahId   = {{ $sekolah->id_sekolah }};
+const currentUser = {{ $sekolah->id_user }};
 
 function onNagariChange(idNagari, preselect) {
     const select  = document.getElementById('id_user');
@@ -383,6 +423,7 @@ function onNagariChange(idNagari, preselect) {
     select.disabled = true;
     if (loading) loading.classList.remove('d-none');
 
+    // Kirim id_sekolah agar admin aktif sekolah ini ikut tampil
     fetch(`{{ route('sekolah.ajax.user-by-nagari') }}?id_nagari=${idNagari}&id_sekolah=${sekolahId}`, {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -392,11 +433,13 @@ function onNagariChange(idNagari, preselect) {
         if (users.length === 0) {
             select.innerHTML += '<option disabled>Tidak ada masyarakat tersedia di nagari ini</option>';
         } else {
+            // Target yang akan dipre-select: old input (jika ada) atau admin aktif
+            const target = preselect ?? {{ old('id_user') ?? $sekolah->id_user }};
             users.forEach(u => {
-                const opt = document.createElement('option');
+                const opt       = document.createElement('option');
                 opt.value       = u.id;
-                opt.textContent = u.nip_nik + (u.nama_masyarakat ? ' – ' + u.nama_masyarakat : '');
-                const target = preselect ?? {{ old('id_user') ?? $sekolah->id_user }};
+                opt.textContent = u.nip_nik + (u.nama_masyarakat ? ' – ' + u.nama_masyarakat : '')
+                                + (u.id == currentUser ? ' (Admin Saat Ini)' : '');
                 if (u.id == target) opt.selected = true;
                 select.appendChild(opt);
             });
@@ -405,12 +448,13 @@ function onNagariChange(idNagari, preselect) {
         if (loading) loading.classList.add('d-none');
     })
     .catch(() => {
+        select.innerHTML = '<option value="">-- Gagal memuat, coba lagi --</option>';
         if (loading) loading.classList.add('d-none');
         select.disabled = false;
     });
 }
 
-// Load users otomatis saat halaman edit dibuka
+// Auto-load saat halaman edit pertama kali dibuka
 document.addEventListener('DOMContentLoaded', () => {
     const nagariVal = document.getElementById('id_nagari').value;
     if (nagariVal) onNagariChange(nagariVal);

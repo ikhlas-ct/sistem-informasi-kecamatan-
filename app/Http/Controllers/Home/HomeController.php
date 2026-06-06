@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers\Home;
 
+use App\Http\Controllers\Controller;
+use App\Models\Heroslide;
+use App\Models\Kategori;
+use App\Models\Kecamatansetting;
+use App\Models\Komentar;
 use App\Models\Konten;
 use App\Models\Layanan_sop;
+use App\Models\Mading;
 use App\Models\Reaksi;
+use App\Models\Sekolah;
 use App\Models\Visitor;
-use App\Models\Kategori;
-use App\Models\Komentar;
-use App\Models\Heroslide;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Models\Kecamatansetting;
-use App\Http\Controllers\Controller;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 
 class HomeController extends Controller
@@ -400,4 +402,102 @@ public function berita_detail(Request $request, $slug, $jenis_konten)
     {
         return view('pages.home.contact', );
     }
+
+
+    public function mading_list(Request $request, $jenis = null)
+    {
+        $query = Mading::where('status', 'publish')
+            ->where('approval_status', 'approved')
+            ->with(['user.masyarakat', 'sekolah'])
+            ->withCount('komentar');
+
+        if ($jenis) {
+            $query->where('jenis', $jenis);
+        }
+
+        $madings = $query->orderBy('tanggal_publikasi', 'desc')->paginate(6);
+
+        $recentMadings = Mading::where('status', 'publish')
+            ->where('approval_status', 'approved')
+            ->orderBy('tanggal_publikasi', 'desc')
+            ->limit(5)
+            ->get();
+
+        $sekolahs = Sekolah::whereHas('madingPublik')
+            ->withCount('madingPublik')
+            ->orderBy('mading_publik_count', 'desc')
+            ->get();
+
+        $jenisOptions = Mading::where('status', 'publish')
+            ->where('approval_status', 'approved')
+            ->pluck('jenis')
+            ->unique();
+
+        $jenis_label = $jenis
+            ? ucfirst(str_replace('_', ' ', $jenis))
+            : 'Semua Mading';
+
+        return view('pages.home.mading.mading', compact(
+            'madings',
+            'recentMadings',
+            'sekolahs',
+            'jenisOptions',
+            'jenis_label',
+            'jenis'
+        ));
+    }
+
+    // ── Detail Mading ───────────────────────────────────────────
+    public function mading_detail(Request $request, $slug)
+    {
+        $mading = Mading::where('slug', $slug)
+            ->where('status', 'publish')
+            ->where('approval_status', 'approved')
+            ->with(['user.masyarakat', 'sekolah', 'lampiran'])
+            ->firstOrFail();
+
+        // Tambah view counter
+        $mading->increment('views');
+
+        $komentars = Komentar::with('balasan')
+            ->where('id_mading', $mading->id_mading)
+            ->orderBy('created_at')
+            ->get();
+
+        $reaksiCounts = Reaksi::where('id_mading', $mading->id_mading)
+            ->select('jenis', \DB::raw('count(*) as total'))
+            ->groupBy('jenis')
+            ->pluck('total', 'jenis');
+
+        $userReaksi = Reaksi::where('id_mading', $mading->id_mading)
+            ->when(auth()->id(), fn($q) => $q->where('id_user', auth()->id()))
+            ->when(! auth()->id(), fn($q) => $q->where('ip_address', request()->ip()))
+            ->first();
+
+        $recentMadings = Mading::where('status', 'publish')
+            ->where('approval_status', 'approved')
+            ->orderBy('tanggal_publikasi', 'desc')
+            ->limit(5)
+            ->get();
+
+        $sekolahs = Sekolah::whereHas('madingPublik')
+            ->withCount('madingPublik')
+            ->get();
+
+        $jenisOptions = Mading::where('status', 'publish')
+            ->where('approval_status', 'approved')
+            ->pluck('jenis')
+            ->unique();
+
+        return view('pages.home.mading.mading_detail', compact(
+            'mading',
+            'komentars',
+            'reaksiCounts',
+            'userReaksi',
+            'recentMadings',
+            'sekolahs',
+            'jenisOptions'
+        ));
+    
+}
 }

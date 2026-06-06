@@ -19,7 +19,6 @@
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body, .card, h4, h5, label, .btn { font-family: 'Plus Jakarta Sans', sans-serif; }
     :root { --accent: #7c3aed; --accent-light: #f5f3ff; --accent-shadow: rgba(124,58,237,.15); }
-
     .container { padding-left:28px; padding-right:24px; }
 
     .ph-card { background:#fff; border:1px solid #e9ecef; border-radius:14px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:1.25rem; position:relative; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.05); }
@@ -56,23 +55,47 @@
     .gambar-placeholder div { font-size:.78rem; }
 
     /* ── Lampiran existing ── */
-    .lampiran-existing { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
-    .lampiran-item { display:flex; align-items:center; justify-content:space-between; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; font-size:.78rem; color:#475569; }
-    .btn-del-lamp { background:none; border:none; color:#dc2626; font-size:.75rem; cursor:pointer; padding:0; transition:color .15s; }
+    .lampiran-existing { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+    .lampiran-item { display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; font-size:.78rem; color:#475569; }
+    .lamp-icon { width:24px; height:24px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:.68rem; flex-shrink:0; }
+    .lamp-icon.image { background:#e0f2fe; color:#0369a1; }
+    .lamp-icon.pdf   { background:#fee2e2; color:#dc2626; }
+    .lamp-icon.video { background:#f3e8ff; color:#7c3aed; }
+    .lamp-icon.other { background:#f1f5f9; color:#64748b; }
+    .lamp-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .btn-del-lamp { background:none; border:none; color:#dc2626; font-size:.75rem; cursor:pointer; padding:0 2px; transition:color .15s; flex-shrink:0; }
     .btn-del-lamp:hover { color:#991b1b; }
+    .lamp-deleting { opacity:.4; pointer-events:none; }
+
+    /* ── Lampiran queue (baru) ── */
+    .lampiran-dropzone { border:2px dashed #ced4da; border-radius:10px; padding:12px; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; background:#fafbfc; font-size:.8rem; color:#94a3b8; }
+    .lampiran-dropzone:hover, .lampiran-dropzone.drag-over { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
+    .lampiran-dropzone i { font-size:1.3rem; display:block; margin-bottom:3px; }
+    .lampiran-queue { display:flex; flex-direction:column; gap:5px; margin-top:8px; }
+    .lampiran-queue-item { display:flex; align-items:center; gap:8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:6px 10px; font-size:.78rem; color:#166534; }
+    .lampiran-queue-item .lq-icon { width:24px; height:24px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:.68rem; flex-shrink:0; background:#dcfce7; color:#16a34a; }
+    .lampiran-queue-item .lq-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lampiran-queue-item .lq-size { font-size:.72rem; color:#4ade80; flex-shrink:0; }
+    .lampiran-queue-item .lq-remove { background:none; border:none; color:#dc2626; cursor:pointer; padding:0 2px; font-size:.72rem; flex-shrink:0; }
+    .lampiran-count { font-size:.74rem; color:#7c3aed; font-weight:600; margin-top:4px; }
+
+    /* ── Submit overlay ── */
+    .submit-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; flex-direction:column; align-items:center; justify-content:center; }
+    .submit-overlay.show { display:flex; }
+    .submit-box { background:#fff; border-radius:14px; padding:28px 32px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,.15); min-width:260px; }
+    .submit-spinner { width:40px; height:40px; border:4px solid #e2e8f0; border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 12px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .submit-box p { margin:0; font-size:.85rem; color:#475569; font-weight:600; }
+    .submit-box small { color:#94a3b8; font-size:.75rem; }
 
     .status-radio { display:none; }
     .status-label { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; font-size:.8rem; font-weight:600; cursor:pointer; border:1.5px solid #e2e8f0; background:#f8fafc; color:#64748b; transition:all .15s; white-space:nowrap; }
     .status-radio:checked + .status-label { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
-
     .pending-notice { background:#fef9c3; border-radius:10px; padding:10px 14px; font-size:.83rem; color:#854d0e; display:flex; align-items:flex-start; gap:8px; }
-
     .char-counter { font-size:.72rem; color:#94a3b8; text-align:right; margin-top:3px; }
     .char-counter.warning { color:#d97706; }
     .char-counter.danger  { color:#dc2626; font-weight:600; }
-
     .info-badge { display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; border-radius:8px; padding:4px 10px; font-size:.75rem; color:#64748b; }
-
     .btn-update { background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 80%,black)); border:none; border-radius:10px; font-weight:600; font-size:.88rem; padding:10px 28px; color:#fff; transition:all .2s; }
     .btn-update:hover { transform:translateY(-1px); filter:brightness(1.07); color:#fff; }
     .btn-cancel { border-radius:10px; font-size:.85rem; border:1.5px solid #e2e8f0; color:#64748b; padding:9px 20px; }
@@ -82,7 +105,15 @@
 @section('content')
 <div class="container">
 
-    {{-- ── Page Header ── --}}
+    {{-- Submit overlay --}}
+    <div class="submit-overlay" id="submit-overlay">
+        <div class="submit-box">
+            <div class="submit-spinner"></div>
+            <p>Sedang menyimpan perubahan…</p>
+            <small id="overlay-info">Mohon tunggu, jangan tutup halaman ini</small>
+        </div>
+    </div>
+
     <div class="ph-card">
         <div class="ph-left">
             <div class="ph-icon"><i class="fas fa-pencil-alt"></i></div>
@@ -105,15 +136,13 @@
         </div>
     </div>
 
-    {{-- Notif siswa edit ulang --}}
     @if(!$isSekolah && $mading->approval_status === 'approved')
         <div class="pending-notice mb-3">
             <i class="fas fa-exclamation-triangle mt-1 flex-shrink-0"></i>
-            <span>Setelah disimpan, mading ini akan kembali berstatus <strong>Menunggu Persetujuan</strong> untuk ditinjau ulang oleh pihak sekolah.</span>
+            <span>Setelah disimpan, mading ini akan kembali berstatus <strong>Menunggu Persetujuan</strong> untuk ditinjau ulang.</span>
         </div>
     @endif
 
-    {{-- Alasan penolakan --}}
     @if($mading->approval_status === 'rejected' && $mading->alasan_penolakan)
         <div class="alert mb-3" style="background:#fee2e2;color:#991b1b;border-radius:12px;font-size:.84rem;">
             <i class="fas fa-times-circle me-2"></i>
@@ -121,22 +150,23 @@
         </div>
     @endif
 
-    {{-- Validation errors --}}
     @if($errors->any())
         <div class="alert" style="background:#fee2e2;color:#991b1b;" role="alert">
             <i class="fas fa-exclamation-triangle me-2"></i>
             <strong>Terdapat kesalahan:</strong>
             <ul class="mb-0 mt-1">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
+                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
             </ul>
         </div>
     @endif
 
-    <form action="{{ route('mading.update', $mading->id_mading) }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('mading.update', $mading->id_mading) }}" method="POST"
+          enctype="multipart/form-data" id="form-mading">
         @csrf
         @method('PUT')
+
+        {{-- Input tersembunyi untuk file queue baru --}}
+        <input type="file" id="lampiran-real" name="lampiran[]" multiple class="d-none" accept="image/*,application/pdf,video/*">
 
         <div class="row g-3">
 
@@ -144,10 +174,7 @@
             <div class="col-lg-8">
                 <div class="card section-card">
                     <div class="card-body">
-                        <div class="section-divider">
-                            <i class="fas fa-pen"></i> Isi Mading
-                        </div>
-
+                        <div class="section-divider"><i class="fas fa-pen"></i> Isi Mading</div>
                         <div class="mb-3">
                             <label for="judul">Judul <span class="required-mark">*</span></label>
                             <input type="text" id="judul" name="judul"
@@ -155,20 +182,14 @@
                                 value="{{ old('judul', $mading->judul) }}"
                                 placeholder="Judul mading…" maxlength="255">
                             <div id="judul-counter" class="char-counter">0 / 255</div>
-                            @error('judul')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            @error('judul')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-
                         <div class="mb-3">
                             <label for="isi">Isi Mading <span class="required-mark">*</span></label>
                             <textarea id="isi" name="isi"
                                 class="form-control summernote @error('isi') is-invalid @enderror">{!! old('isi', $mading->isi) !!}</textarea>
-                            @error('isi')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            @error('isi')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -179,9 +200,7 @@
                 {{-- Gambar Sampul --}}
                 <div class="card section-card">
                     <div class="card-body">
-                        <div class="section-divider">
-                            <i class="fas fa-image"></i> Gambar Sampul
-                        </div>
+                        <div class="section-divider"><i class="fas fa-image"></i> Gambar Sampul</div>
                         <label for="gambar-input" class="gambar-wrap">
                             @if($mading->gambar)
                                 <img id="gambar-preview" src="{{ asset('storage/' . $mading->gambar) }}" alt="Gambar saat ini">
@@ -200,87 +219,90 @@
                         @if($mading->gambar)
                             <div class="form-text">Kosongkan jika tidak ingin mengganti gambar.</div>
                         @endif
-                        @error('gambar')
-                            <div class="text-danger mt-1" style="font-size:.78rem;">{{ $message }}</div>
-                        @enderror
+                        @error('gambar')<div class="text-danger mt-1" style="font-size:.78rem;">{{ $message }}</div>@enderror
                     </div>
                 </div>
 
                 {{-- Lampiran --}}
                 <div class="card section-card">
                     <div class="card-body">
-                        <div class="section-divider">
-                            <i class="fas fa-paperclip"></i> Lampiran
-                        </div>
+                        <div class="section-divider"><i class="fas fa-paperclip"></i> Lampiran</div>
 
-                        {{-- Lampiran existing --}}
+                        {{-- Lampiran yang sudah tersimpan --}}
                         @if($mading->lampiran->isNotEmpty())
-                            <div class="lampiran-existing">
+                            <div class="form-text mb-2" style="color:#475569;font-weight:600;">Lampiran tersimpan:</div>
+                            <div class="lampiran-existing" id="lampiran-existing">
                                 @foreach($mading->lampiran as $lamp)
+                                    @php
+                                        $iconCls = match($lamp->tipe) {
+                                            'image' => 'image', 'pdf' => 'pdf', 'video' => 'video', default => 'other'
+                                        };
+                                        $iconFa = match($lamp->tipe) {
+                                            'image' => 'fa-image', 'pdf' => 'fa-file-pdf', 'video' => 'fa-film', default => 'fa-file'
+                                        };
+                                    @endphp
                                     <div class="lampiran-item" id="lamp-item-{{ $lamp->id }}">
-                                        <span>
-                                            <i class="fas fa-{{ $lamp->tipe === 'image' ? 'image' : ($lamp->tipe === 'pdf' ? 'file-pdf' : 'file') }} me-1"></i>
-                                            {{ basename($lamp->path) }}
-                                        </span>
+                                        <span class="lamp-icon {{ $iconCls }}"><i class="fas {{ $iconFa }}"></i></span>
+                                        <span class="lamp-name" title="{{ basename($lamp->path) }}">{{ basename($lamp->path) }}</span>
                                         <button type="button" class="btn-del-lamp"
-                                            data-id="{{ $lamp->id }}" title="Hapus">
+                                            data-id="{{ $lamp->id }}" title="Hapus lampiran ini">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                 @endforeach
                             </div>
+                            <hr style="border-color:#f1f5f9;margin:10px 0;">
                         @endif
 
-                        {{-- Upload lampiran baru --}}
-                        <input type="file" name="lampiran[]"
-                            class="form-control @error('lampiran.*') is-invalid @enderror"
-                            accept="image/*,application/pdf,video/*" multiple>
-                        <div class="form-text">Tambah lampiran baru (opsional). Maks 5 MB per file.</div>
-                        @error('lampiran.*')
-                            <div class="text-danger mt-1" style="font-size:.78rem;">{{ $message }}</div>
-                        @enderror
+                        {{-- Drop zone lampiran baru --}}
+                        <div class="form-text mb-1" style="color:#475569;font-weight:600;">Tambah lampiran baru:</div>
+                        <label for="lampiran-trigger" class="lampiran-dropzone" id="lampiran-dropzone">
+                            <i class="fas fa-plus-circle"></i>
+                            Klik atau seret file ke sini<br>
+                            <small>Bisa tambah berkali-kali · Maks 5 MB/file</small>
+                        </label>
+                        <input type="file" id="lampiran-trigger" class="d-none" accept="image/*,application/pdf,video/*" multiple>
+
+                        {{-- Antrian file baru --}}
+                        <div class="lampiran-queue" id="lampiran-queue"></div>
+                        <div class="lampiran-count d-none" id="lampiran-count"></div>
+
+                        @error('lampiran.*')<div class="text-danger mt-1" style="font-size:.78rem;">{{ $message }}</div>@enderror
                     </div>
                 </div>
 
                 {{-- Pengaturan --}}
                 <div class="card section-card">
                     <div class="card-body">
-                        <div class="section-divider">
-                            <i class="fas fa-cog"></i> Pengaturan
-                        </div>
-
-                        {{-- Jenis --}}
+                        <div class="section-divider"><i class="fas fa-cog"></i> Pengaturan</div>
                         <div class="mb-3">
                             <label for="jenis">Jenis Mading</label>
                             <select name="jenis" id="jenis" class="form-select @error('jenis') is-invalid @enderror">
                                 @foreach($jenisOptions as $val => $lbl)
-                                    <option value="{{ $val }}"
-                                        {{ old('jenis', $mading->jenis) === $val ? 'selected' : '' }}>
+                                    <option value="{{ $val }}" {{ old('jenis', $mading->jenis) === $val ? 'selected' : '' }}>
                                         {{ $lbl }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        {{-- Status: hanya sekolah --}}
                         @if($isSekolah)
                             <div class="mb-3">
                                 <label>Status Publikasi</label>
                                 <div class="d-flex flex-wrap gap-2 mt-2">
                                     @foreach(['publish' => ['Publish','#16a34a','check-circle'], 'draft' => ['Draft','#64748b','file']] as $val => [$lbl, $col, $ico])
-                                        <div>
-                                            <input type="radio" id="status_{{ $val }}" name="status"
-                                                value="{{ $val }}" class="status-radio"
-                                                {{ old('status', $mading->status) === $val ? 'checked' : '' }}>
-                                            <label for="status_{{ $val }}" class="status-label">
-                                                <i class="fas fa-{{ $ico }}" style="color:{{ $col }}"></i> {{ $lbl }}
-                                            </label>
-                                        </div>
+                                    <div>
+                                        <input type="radio" id="status_{{ $val }}" name="status"
+                                            value="{{ $val }}" class="status-radio"
+                                            {{ old('status', $mading->status) === $val ? 'checked' : '' }}>
+                                        <label for="status_{{ $val }}" class="status-label">
+                                            <i class="fas fa-{{ $ico }}" style="color:{{ $col }}"></i> {{ $lbl }}
+                                        </label>
+                                    </div>
                                     @endforeach
                                 </div>
                             </div>
                         @else
-                            {{-- Siswa: tampilkan status read-only --}}
                             <div class="mb-3">
                                 <label>Status Saat Ini</label>
                                 <div class="mt-1">
@@ -304,13 +326,11 @@
                                 </div>
                             </div>
                         @endif
-
                     </div>
                 </div>
 
-                {{-- Tombol --}}
                 <div class="d-flex gap-2 flex-column">
-                    <button type="submit" class="btn btn-update w-100">
+                    <button type="submit" class="btn btn-update w-100" id="btn-submit">
                         <i class="fas fa-save me-2"></i> Simpan Perubahan
                     </button>
                     <a href="{{ route('mading.index') }}" class="btn btn-cancel text-center">
@@ -320,7 +340,6 @@
 
             </div>
         </div>
-
     </form>
 </div>
 @endsection
@@ -328,22 +347,135 @@
 @section('scripts')
 @include('pages.mading.mading_summernote')
 <script>
-    // Hapus lampiran existing via AJAX
-    document.querySelectorAll('.btn-del-lamp').forEach(btn => {
+(function () {
+
+    // ── 1. Hapus lampiran existing via AJAX ──────────────────────
+    document.querySelectorAll('.btn-del-lamp').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            const id   = this.dataset.id;
-            const item = document.getElementById('lamp-item-' + id);
+            var id   = this.dataset.id;
+            var item = document.getElementById('lamp-item-' + id);
             if (!confirm('Hapus lampiran ini?')) return;
-            fetch(`/mading/lampiran/${id}`, {
+
+            item.classList.add('lamp-deleting');
+            fetch('/mading/lampiran/' + id, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json',
                 }
-            }).then(r => r.json()).then(res => {
-                if (res.success) item?.remove();
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.success) {
+                    item.remove();
+                    // Sembunyikan wrapper jika sudah kosong
+                    var existing = document.getElementById('lampiran-existing');
+                    if (existing && existing.children.length === 0) {
+                        existing.previousElementSibling?.remove(); // label "tersimpan"
+                        existing.nextElementSibling?.remove();     // hr
+                        existing.remove();
+                    }
+                } else {
+                    item.classList.remove('lamp-deleting');
+                    alert('Gagal menghapus lampiran.');
+                }
+            })
+            .catch(function () {
+                item.classList.remove('lamp-deleting');
+                alert('Terjadi kesalahan jaringan.');
             });
         });
     });
+
+    // ── 2. File queue untuk lampiran baru ───────────────────────
+    var fileQueue = [];
+
+    function getFileIcon(file) {
+        var t = file.type;
+        if (t.startsWith('image/'))       return 'fa-image';
+        if (t === 'application/pdf')      return 'fa-file-pdf';
+        if (t.startsWith('video/'))       return 'fa-film';
+        return 'fa-file';
+    }
+
+    function formatSize(bytes) {
+        return bytes < 1024 * 1024
+            ? (bytes / 1024).toFixed(0) + ' KB'
+            : (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function renderQueue() {
+        var list  = document.getElementById('lampiran-queue');
+        var count = document.getElementById('lampiran-count');
+        list.innerHTML = '';
+
+        fileQueue.forEach(function (file, idx) {
+            var item = document.createElement('div');
+            item.className = 'lampiran-queue-item';
+            item.innerHTML =
+                '<span class="lq-icon"><i class="fas ' + getFileIcon(file) + '"></i></span>' +
+                '<span class="lq-name" title="' + file.name + '">' + file.name + '</span>' +
+                '<span class="lq-size">' + formatSize(file.size) + '</span>' +
+                '<button type="button" class="lq-remove" data-idx="' + idx + '" title="Hapus dari antrian">' +
+                    '<i class="fas fa-times"></i></button>';
+            list.appendChild(item);
+        });
+
+        count.textContent = fileQueue.length > 0
+            ? fileQueue.length + ' file baru siap dikirim'
+            : '';
+        count.classList.toggle('d-none', fileQueue.length === 0);
+
+        list.querySelectorAll('.lq-remove').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                fileQueue.splice(parseInt(this.dataset.idx), 1);
+                renderQueue();
+            });
+        });
+    }
+
+    function addFiles(files) {
+        Array.from(files).forEach(function (file) {
+            var dup = fileQueue.some(function (f) {
+                return f.name === file.name && f.size === file.size;
+            });
+            if (dup) return;
+            if (file.size > 5 * 1024 * 1024) {
+                alert(file.name + ' melebihi batas 5 MB dan dilewati.');
+                return;
+            }
+            fileQueue.push(file);
+        });
+        renderQueue();
+    }
+
+    document.getElementById('lampiran-trigger').addEventListener('change', function () {
+        addFiles(this.files);
+        this.value = '';
+    });
+
+    var dropzone = document.getElementById('lampiran-dropzone');
+    dropzone.addEventListener('dragover',  function (e) { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', function ()  { dropzone.classList.remove('drag-over'); });
+    dropzone.addEventListener('drop',      function (e) {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        addFiles(e.dataTransfer.files);
+    });
+
+    // ── 3. Submit: masukkan queue ke input tersembunyi ────────────
+    document.getElementById('form-mading').addEventListener('submit', function () {
+        document.getElementById('submit-overlay').classList.add('show');
+
+        if (fileQueue.length > 0) {
+            document.getElementById('overlay-info').textContent =
+                'Mengunggah ' + fileQueue.length + ' lampiran baru, mohon tunggu…';
+            var dt = new DataTransfer();
+            fileQueue.forEach(function (f) { dt.items.add(f); });
+            document.getElementById('lampiran-real').files = dt.files;
+        }
+    });
+
+})();
 </script>
 @endsection

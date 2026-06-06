@@ -87,15 +87,17 @@ class PengaduanController extends Controller
         }
 
         $request->validate([
-            'judul_pengaduan'  => 'required|string|max:255',
-            'hal_pengaduan'    => 'required|string|max:255',
-            'deskripsi'        => 'required|string',
-            'alamat'           => 'nullable|string|max:500',
-            'latitude'         => 'nullable|numeric|between:-90,90',
-            'longitude'        => 'nullable|numeric|between:-180,180',
+            'judul_pengaduan'   => 'required|string|max:255',
+            'hal_pengaduan'     => 'required|string|max:255',
+            'deskripsi'         => 'required|string',
+            'alamat'            => 'nullable|string|max:500',
+            'latitude'          => 'nullable|numeric|between:-90,90',
+            'longitude'         => 'nullable|numeric|between:-180,180',
             'tanggal_pengaduan' => 'required|date',
-            'lampiran'         => 'nullable|array|max:10',
-            'lampiran.*'       => 'file|mimes:jpg,jpeg,webp,png,pdf,doc,docx|max:10240',
+            // 'lampiran' = array file, maks 10 elemen
+            'lampiran'          => 'nullable|array|max:10',
+            // tiap elemen: wajib file, format & ukuran dibatasi
+            'lampiran.*'        => 'file|mimes:jpg,jpeg,webp,png,pdf,doc,docx|max:10240',
         ], [
             'judul_pengaduan.required'   => 'Judul pengaduan wajib diisi.',
             'hal_pengaduan.required'     => 'Hal pengaduan wajib diisi.',
@@ -107,28 +109,31 @@ class PengaduanController extends Controller
         ]);
 
         $pengaduan = Pengaduan::create([
-            'id_masyarakat'    => $masyarakat->id_masyarakat,
-            'judul_pengaduan'  => $request->judul_pengaduan,
-            'hal_pengaduan'    => $request->hal_pengaduan,
-            'deskripsi'        => $request->deskripsi,
-            'alamat'           => $request->alamat,
-            'latitude'         => $request->latitude,
-            'longitude'        => $request->longitude,
+            'id_masyarakat'     => $masyarakat->id_masyarakat,
+            'judul_pengaduan'   => $request->judul_pengaduan,
+            'hal_pengaduan'     => $request->hal_pengaduan,
+            'deskripsi'         => $request->deskripsi,
+            'alamat'            => $request->alamat,
+            'latitude'          => $request->latitude,
+            'longitude'         => $request->longitude,
             'tanggal_pengaduan' => $request->tanggal_pengaduan,
-            'status'           => 'pending',
+            'status'            => 'pending',
         ]);
 
-        // Simpan lampiran
+        // Simpan lampiran — path disimpan relatif ke disk 'public'
+        // Untuk ditampilkan: asset('storage/' . $lmp->path)
         if ($request->hasFile('lampiran')) {
             foreach ($request->file('lampiran') as $file) {
-                $mime = $file->getMimeType();
-                $tipe = str_starts_with($mime, 'image/') ? 'gambar' : 'file';
+                $ext  = strtolower($file->getClientOriginalExtension());
+                $tipe = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif']) ? 'gambar' : 'file';
+
+                // Simpan ke storage/app/public/pengaduan/lampiran/
                 $path = $file->store('pengaduan/lampiran', 'public');
 
                 Lampiran_pengaduan::create([
                     'id_pengaduan' => $pengaduan->id_pengaduan,
                     'tipe'         => $tipe,
-                    'path'         => $path,
+                    'path'         => $path,   // contoh: "pengaduan/lampiran/abc123.jpg"
                 ]);
             }
         }
@@ -138,48 +143,67 @@ class PengaduanController extends Controller
     }
 
     /**
-     * SHOW – Detail pengaduan (hanya milik sendiri).
+     * SHOW – Detail pengaduan.
+     *
+     * FIX: role check menggunakan Auth::user()->getRoleLabel()
+     *      bukan $pegawai->role (field berbeda).
      */
     public function show($id)
     {
+        $user       = Auth::user();
         $masyarakat = $this->getMasyarakat();
 
-        $query = Pengaduan::with('lampiran_pengaduan', 'balasanpengaduan.lampiran_balasan');
+        $query = Pengaduan::with([
+            'lampiran_pengaduan',
+            'balasanpengaduan.pegawai',
+            'balasanpengaduan.lampiran_balasan',
+        ]);
 
         if ($masyarakat) {
-            // Masyarakat: hanya boleh lihat pengaduan miliknya sendiri
+            // ── Masyarakat: hanya milik sendiri ──────────────────────
             $query->where('id_masyarakat', $masyarakat->id_masyarakat);
         } else {
-            // Pegawai: boleh lihat, tapi batasi ke nagari yang sama (kecuali camat/staf_camat)
-            $pegawai = Pegawai::with('nagari')->where('id_user', Auth::id())->first();
+            // ── Pegawai / Camat ───────────────────────────────────────
+            $pegawai = Pegawai::where('id_user', $user->id)->first();
 
-            if (! $pegawai) abort(403, 'Akses ditolak.');
+            if (!$pegawai) {
+                abort(403, 'Akses ditolak.');
+            }
 
-            $rolesSemua = ['camat', 'staf_camat'];
-            if (! in_array($pegawai->role, $rolesSemua)) {
-                // Kepala nagari / pegawai nagari → hanya nagari sendiri
+            // Gunakan getRoleLabel() dari User, bukan field pegawai->role
+            $roleLabel    = $user->getRoleLabel();
+            $bolehatau  = ['camat', 'staf_camat'];
+
+            if (!in_array($roleLabel, $bolehatau)) {
+                // Wali nagari / staf nagari → hanya pengaduan dari nagari sendiri
                 $query->whereHas('masyarakat', function ($q) use ($pegawai) {
                     $q->where('id_nagari', $pegawai->id_nagari);
                 });
             }
-            // Camat/staf_camat → tidak ada filter tambahan, bisa lihat semua
+            // camat / staf_camat → bisa lihat semua, tidak perlu filter
         }
 
         $pengaduan = $query->findOrFail($id);
 
         return view('pages.pengaduan.show', compact('pengaduan'));
     }
+
     /**
      * EDIT – Form edit pengaduan (hanya milik sendiri & status pending).
      */
     public function edit($id)
     {
         $masyarakat = $this->getMasyarakat();
-        $pengaduan  = Pengaduan::with('lampiran_pengaduan')
+
+        if (!$masyarakat) {
+            return redirect()->route('pengaduan.index')
+                ->with('error', 'Data masyarakat tidak ditemukan.');
+        }
+
+        $pengaduan = Pengaduan::with('lampiran_pengaduan')
             ->where('id_masyarakat', $masyarakat->id_masyarakat)
             ->findOrFail($id);
 
-        // Hanya boleh edit jika masih pending
         if ($pengaduan->status !== 'pending') {
             return redirect()->route('pengaduan.index')
                 ->with('error', 'Pengaduan yang sudah diproses tidak dapat diedit.');
@@ -194,28 +218,36 @@ class PengaduanController extends Controller
     public function update(Request $request, $id)
     {
         $masyarakat = $this->getMasyarakat();
-        $pengaduan  = Pengaduan::where('id_masyarakat', $masyarakat->id_masyarakat)->findOrFail($id);
+
+        if (!$masyarakat) {
+            return redirect()->route('pengaduan.index')
+                ->with('error', 'Data masyarakat tidak ditemukan.');
+        }
+
+        $pengaduan = Pengaduan::where('id_masyarakat', $masyarakat->id_masyarakat)
+            ->findOrFail($id);
 
         if ($pengaduan->status !== 'pending') {
             return redirect()->route('pengaduan.index')
                 ->with('error', 'Pengaduan yang sudah diproses tidak dapat diedit.');
         }
 
-        $jumlahLampiranAda = $pengaduan->lampiran_pengaduan()->count();
-        $jumlahLampiranDihapus = count($request->input('hapus_lampiran', []));
-        $jumlahLampiranBaru = $request->hasFile('lampiran') ? count($request->file('lampiran')) : 0;
-        $totalSetelahUpdate = ($jumlahLampiranAda - $jumlahLampiranDihapus) + $jumlahLampiranBaru;
+        // Hitung total lampiran setelah update untuk validasi batas 10
+        $jumlahAda      = $pengaduan->lampiran_pengaduan()->count();
+        $jumlahDihapus  = count($request->input('hapus_lampiran', []));
+        $jumlahBaru     = $request->hasFile('lampiran') ? count($request->file('lampiran')) : 0;
+        $totalAkhir     = ($jumlahAda - $jumlahDihapus) + $jumlahBaru;
 
         $request->validate([
-            'judul_pengaduan'  => 'required|string|max:255',
-            'hal_pengaduan'    => 'required|string|max:255',
-            'deskripsi'        => 'required|string',
-            'alamat'           => 'nullable|string|max:500',
-            'latitude'         => 'nullable|numeric|between:-90,90',
-            'longitude'        => 'nullable|numeric|between:-180,180',
+            'judul_pengaduan'   => 'required|string|max:255',
+            'hal_pengaduan'     => 'required|string|max:255',
+            'deskripsi'         => 'required|string',
+            'alamat'            => 'nullable|string|max:500',
+            'latitude'          => 'nullable|numeric|between:-90,90',
+            'longitude'         => 'nullable|numeric|between:-180,180',
             'tanggal_pengaduan' => 'required|date',
-            'lampiran'         => 'nullable|array',
-            'lampiran.*'       => 'file|mimes:jpg,jpeg,webp,png,pdf,doc,docx|max:10240',
+            'lampiran'          => 'nullable|array',
+            'lampiran.*'        => 'file|mimes:jpg,jpeg,webp,png,pdf,doc,docx|max:10240',
         ], [
             'judul_pengaduan.required'   => 'Judul pengaduan wajib diisi.',
             'hal_pengaduan.required'     => 'Hal pengaduan wajib diisi.',
@@ -225,21 +257,23 @@ class PengaduanController extends Controller
             'lampiran.*.max'             => 'Ukuran tiap file maksimal 10 MB.',
         ]);
 
-        if ($totalSetelahUpdate > 10) {
-            return back()->withErrors(['lampiran' => 'Total lampiran tidak boleh lebih dari 10 file.'])->withInput();
+        if ($totalAkhir > 10) {
+            return back()
+                ->withErrors(['lampiran' => 'Total lampiran tidak boleh lebih dari 10 file.'])
+                ->withInput();
         }
 
         $pengaduan->update([
-            'judul_pengaduan'  => $request->judul_pengaduan,
-            'hal_pengaduan'    => $request->hal_pengaduan,
-            'deskripsi'        => $request->deskripsi,
-            'alamat'           => $request->alamat,
-            'latitude'         => $request->latitude,
-            'longitude'        => $request->longitude,
+            'judul_pengaduan'   => $request->judul_pengaduan,
+            'hal_pengaduan'     => $request->hal_pengaduan,
+            'deskripsi'         => $request->deskripsi,
+            'alamat'            => $request->alamat,
+            'latitude'          => $request->latitude,
+            'longitude'         => $request->longitude,
             'tanggal_pengaduan' => $request->tanggal_pengaduan,
         ]);
 
-        // Hapus lampiran yang dipilih
+        // Hapus lampiran yang dicentang user (hapus_lampiran[])
         if ($request->filled('hapus_lampiran')) {
             $lampiranHapus = Lampiran_pengaduan::whereIn('id', $request->hapus_lampiran)
                 ->where('id_pengaduan', $pengaduan->id_pengaduan)
@@ -251,11 +285,11 @@ class PengaduanController extends Controller
             }
         }
 
-        // Tambah lampiran baru
+        // Simpan lampiran baru
         if ($request->hasFile('lampiran')) {
             foreach ($request->file('lampiran') as $file) {
-                $mime = $file->getMimeType();
-                $tipe = str_starts_with($mime, 'image/') ? 'gambar' : 'file';
+                $ext  = strtolower($file->getClientOriginalExtension());
+                $tipe = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif']) ? 'gambar' : 'file';
                 $path = $file->store('pengaduan/lampiran', 'public');
 
                 Lampiran_pengaduan::create([
@@ -276,7 +310,13 @@ class PengaduanController extends Controller
     public function destroy($id)
     {
         $masyarakat = $this->getMasyarakat();
-        $pengaduan  = Pengaduan::with('lampiran_pengaduan')
+
+        if (!$masyarakat) {
+            return redirect()->route('pengaduan.index')
+                ->with('error', 'Data masyarakat tidak ditemukan.');
+        }
+
+        $pengaduan = Pengaduan::with('lampiran_pengaduan')
             ->where('id_masyarakat', $masyarakat->id_masyarakat)
             ->findOrFail($id);
 

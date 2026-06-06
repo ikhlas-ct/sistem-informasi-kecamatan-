@@ -49,13 +49,14 @@
     /* ── Nagari locked badge ── */
     .nagari-locked { background:var(--accent-light); border:1.5px solid var(--accent); border-radius:10px; padding:9px 14px; font-size:.84rem; color:#0f766e; font-weight:600; display:flex; align-items:center; gap:8px; }
 
+    /* ── Info box ── */
+    .info-box { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 14px; font-size:.8rem; color:#1e40af; display:flex; align-items:flex-start; gap:8px; margin-bottom:1rem; }
+
     /* ── Buttons ── */
     .btn-submit { background:linear-gradient(135deg,var(--accent),#0f766e); border:none; border-radius:10px; font-weight:600; font-size:.88rem; padding:10px 28px; color:#fff; transition:all .2s; }
     .btn-submit:hover { transform:translateY(-1px); filter:brightness(1.07); color:#fff; }
     .btn-cancel { border-radius:10px; font-size:.85rem; border:1.5px solid #e2e8f0; color:#64748b; padding:9px 20px; }
     .btn-cancel:hover { background:#f8fafc; }
-
-    /* ── Spinner ── */
     .spinner-border-sm { width:1rem; height:1rem; }
 </style>
 @endsection
@@ -90,6 +91,24 @@
                 <li>{{ $error }}</li>
             @endforeach
         </ul>
+    </div>
+    @endif
+
+    {{-- Info: penjelasan role --}}
+    @if($bisaPilihNagari)
+    <div class="info-box">
+        <i class="fas fa-info-circle mt-1"></i>
+        <div>
+            <strong>Mode Superadmin:</strong> Anda dapat memilih nagari secara bebas.
+            Setelah memilih nagari, daftar masyarakat yang tersedia akan dimuat otomatis.
+        </div>
+    </div>
+    @else
+    <div class="info-box">
+        <i class="fas fa-info-circle mt-1"></i>
+        <div>
+            <strong>Nagari Terkunci:</strong> Sekolah akan otomatis terdaftar di nagari Anda ({{ $nagariTerpilih?->nama_nagari ?? '-' }}).
+        </div>
     </div>
     @endif
 
@@ -197,7 +216,7 @@
                             <label>Nagari <span class="required-mark">*</span></label>
 
                             @if($bisaPilihNagari)
-                                {{-- Camat / Staf Camat: bisa pilih nagari --}}
+                                {{-- Camat / Staf Camat: bebas pilih nagari --}}
                                 <select id="id_nagari" name="id_nagari"
                                         class="form-select @error('id_nagari') is-invalid @enderror"
                                         onchange="onNagariChange(this.value)">
@@ -214,12 +233,14 @@
                                 <div class="form-text">Pilih nagari terlebih dahulu, lalu pilih administrator sekolah.</div>
 
                             @else
-                                {{-- Pegawai Nagari: nagari sudah otomatis terpilih --}}
+                                {{-- Kepala Nagari / Staf Nagari: nagari terkunci otomatis --}}
                                 <div class="nagari-locked">
-                                    <i class="fas fa-map-marker-alt"></i>
+                                    <i class="fas fa-lock"></i>
                                     {{ $nagariTerpilih?->nama_nagari ?? '-' }}
                                     <span style="font-size:.75rem;font-weight:400;color:#64748b;margin-left:4px;">(otomatis sesuai nagari Anda)</span>
                                 </div>
+                                {{-- Hidden field agar id_nagari ikut tersubmit --}}
+                                <input type="hidden" name="id_nagari" value="{{ $nagariTerpilih?->id }}">
                             @endif
                         </div>
 
@@ -228,7 +249,7 @@
                             <label for="id_user">Kepala Sekolah / Administrator <span class="required-mark">*</span></label>
 
                             @if($bisaPilihNagari)
-                                {{-- Camat / Staf Camat: user dimuat via AJAX setelah nagari dipilih --}}
+                                {{-- Camat / Staf Camat: dimuat via AJAX setelah nagari dipilih --}}
                                 <select id="id_user" name="id_user"
                                         class="form-select @error('id_user') is-invalid @enderror"
                                         disabled>
@@ -237,24 +258,26 @@
                                 <div id="user-loading" class="form-text d-none">
                                     <span class="spinner-border spinner-border-sm text-secondary me-1"></span> Memuat data...
                                 </div>
-                                <div class="form-text" id="user-hint">Daftar user masyarakat akan muncul setelah nagari dipilih.</div>
+                                <div class="form-text" id="user-hint">Daftar masyarakat akan muncul setelah nagari dipilih.</div>
                                 @error('id_user')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
 
                             @else
-                                {{-- Pegawai nagari: langsung tampilkan user masyarakat di nagarinya --}}
+                                {{-- Kepala / Staf Nagari: langsung tampilkan masyarakat di nagarinya --}}
                                 <select id="id_user" name="id_user"
                                         class="form-select @error('id_user') is-invalid @enderror">
                                     <option value="">-- Pilih Administrator --</option>
-                                    @foreach($userMasyarakat as $u)
+                                    @forelse($userMasyarakat as $u)
                                         <option value="{{ $u->id }}" {{ old('id_user') == $u->id ? 'selected' : '' }}>
                                             {{ $u->nip_nik }}
                                             @if($u->masyarakat?->nama_masyarakat)
                                                 – {{ $u->masyarakat->nama_masyarakat }}
                                             @endif
                                         </option>
-                                    @endforeach
+                                    @empty
+                                        <option disabled>Tidak ada masyarakat tersedia di nagari ini</option>
+                                    @endforelse
                                 </select>
                                 @error('id_user')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -335,11 +358,11 @@
 
 @section('scripts')
 <script>
-// ── Logo preview ───────────────────────────────────
-const logoInput    = document.getElementById('logo-input');
-const logoPreview  = document.getElementById('logo-preview');
-const logoHolder   = document.getElementById('logo-placeholder');
-const dropZone     = document.getElementById('logo-drop-zone');
+// ── Logo preview ─────────────────────────────────
+const logoInput   = document.getElementById('logo-input');
+const logoPreview = document.getElementById('logo-preview');
+const logoHolder  = document.getElementById('logo-placeholder');
+const dropZone    = document.getElementById('logo-drop-zone');
 
 function showLogoPreview(file) {
     if (!file || !file.type.match('image.*')) return;
@@ -374,7 +397,7 @@ logoInput.addEventListener('change', function () {
     });
 });
 
-// ── AJAX: load user by nagari (camat & staf camat) ──
+// ── AJAX: load user by nagari (hanya untuk camat & staf camat) ──
 @if($bisaPilihNagari)
 function onNagariChange(idNagari) {
     const select  = document.getElementById('id_user');
@@ -401,7 +424,7 @@ function onNagariChange(idNagari) {
             select.innerHTML += '<option disabled>Tidak ada masyarakat tersedia di nagari ini</option>';
         } else {
             users.forEach(u => {
-                const opt = document.createElement('option');
+                const opt       = document.createElement('option');
                 opt.value       = u.id;
                 opt.textContent = u.nip_nik + (u.nama_masyarakat ? ' – ' + u.nama_masyarakat : '');
                 @if(old('id_user'))
@@ -415,6 +438,7 @@ function onNagariChange(idNagari) {
         hint.style.display = '';
     })
     .catch(() => {
+        select.innerHTML = '<option value="">-- Gagal memuat, coba lagi --</option>';
         loading.classList.add('d-none');
         hint.style.display = '';
         select.disabled = false;

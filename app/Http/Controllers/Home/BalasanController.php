@@ -76,7 +76,7 @@ class BalasanController extends Controller
             'id_konten'   => $id_konten,
             'id_user'     => auth()->id(),
             'ip_address'  => auth()->check() ? null : $request->ip(),
-            'isi_komentar'=> $request->isi,
+            'isi_komentar' => $request->isi,
             'nama'        => $request->nama,
             'no_hp'       => $request->no_hp,
         ]);
@@ -142,6 +142,102 @@ class BalasanController extends Controller
             'parent_id' => $validated['parent_id'] ?? null,
             'root_id' => $rootId, // Simpan root_id
             'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->back()->with('success', 'Balasan berhasil ditambahkan.');
+    }
+
+    // =========================================================
+    //  MADING — Reaksi, Komentar, Balasan
+    //  (sama seperti di atas, tapi kolom id_mading bukan id_konten)
+    // =========================================================
+
+    public function storeMadingReaksi(Request $request, $id_mading)
+    {
+        $request->validate([
+            'jenis' => 'required|in:suka,marah,sedih,senang,terkejut,lucu'
+        ]);
+
+        $user_id    = auth()->id();
+        $ip_address = $request->ip();
+        $currentReaksi = null;
+
+        $existingReaksi = Reaksi::where('id_mading', $id_mading)
+            ->when($user_id,  fn($q) => $q->where('id_user', $user_id))
+            ->when(! $user_id, fn($q) => $q->where('ip_address', $ip_address))
+            ->first();
+
+        if ($existingReaksi && $existingReaksi->jenis === $request->jenis) {
+            // Klik reaksi yang sama → toggle off
+            $existingReaksi->delete();
+        } elseif ($existingReaksi) {
+            // Ganti jenis reaksi
+            $existingReaksi->update(['jenis' => $request->jenis]);
+            $currentReaksi = $request->jenis;
+        } else {
+            // Reaksi baru
+            Reaksi::create([
+                'id_mading'  => $id_mading,
+                'id_user'    => $user_id,
+                'ip_address' => $user_id ? null : $ip_address,
+                'jenis'      => $request->jenis,
+            ]);
+            $currentReaksi = $request->jenis;
+        }
+
+        $reaksiCounts = Reaksi::where('id_mading', $id_mading)
+            ->select('jenis', \DB::raw('count(*) as total'))
+            ->groupBy('jenis')
+            ->pluck('total', 'jenis')
+            ->toArray();
+
+        return response()->json([
+            'success'    => true,
+            'counts'     => $reaksiCounts,
+            'user_reaksi' => $currentReaksi,
+        ]);
+    }
+
+    public function storeMadingKomentar(Request $request, $id_mading)
+    {
+        $request->validate([
+            'isi' => 'required'
+        ]);
+
+        $komentar = Komentar::create([
+            'id_mading'    => $id_mading,
+            'id_user'      => auth()->id(),
+            'ip_address'   => auth()->check() ? null : $request->ip(),
+            'isi_komentar' => $request->isi,
+            'nama'         => $request->nama,
+            'no_hp'        => $request->no_hp,
+        ]);
+
+        // Kirim notifikasi ke semua pegawai & camat (sama seperti komentar konten)
+      
+
+        return back()->with('success', 'Komentar berhasil ditambahkan.');
+    }
+
+    public function storeMadingBalasan(Request $request, $id_mading)
+    {
+        $validated = $request->validate([
+            'isi'       => 'required|string',
+            'parent_id' => 'nullable|integer|exists:komentar,id_komentar',
+        ]);
+
+        $parentKomentar = Komentar::find($validated['parent_id']);
+        $rootId = $parentKomentar
+            ? ($parentKomentar->root_id ?? $parentKomentar->id_komentar)
+            : null;
+
+        Komentar::create([
+            'id_mading'    => $id_mading,
+            'id_user'      => auth()->id(),
+            'isi_komentar' => $validated['isi'],
+            'parent_id'    => $validated['parent_id'] ?? null,
+            'root_id'      => $rootId,
+            'ip_address'   => $request->ip(),
         ]);
 
         return redirect()->back()->with('success', 'Balasan berhasil ditambahkan.');

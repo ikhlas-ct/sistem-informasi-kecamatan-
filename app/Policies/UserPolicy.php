@@ -9,93 +9,99 @@ class UserPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Determine if the user is a Camat.
-     *
-     * @param  \App\Models\User  $user
-     * @return bool
-     */
-    public function isCamat(User $user)
+    // ─────────────────────────────────────────────
+    // CEK ROLE DASAR (raw role)
+    // ─────────────────────────────────────────────
+
+    public function isCamat(User $user): bool
     {
         return $user->role === 'camat';
     }
 
-    /**
-     * Determine if the user is a Masyarakat.
-     *
-     * @param  \App\Models\User  $user
-     * @return bool
-     */
-    public function isMasyarakat(User $user)
+    public function isPegawai(User $user): bool
+    {
+        return $user->role === 'pegawai';
+    }
+
+    public function isMasyarakat(User $user): bool
     {
         return $user->role === 'masyarakat';
     }
 
     /**
-     * Determine if the user is a Pegawai.
-     *
-     * @param  \App\Models\User  $user
-     * @return bool
+     * Admin sekolah: role = masyarakat, sekolah = 'admin'
      */
-    public function isPegawai(User $user)
+    public function isAdminSekolah(User $user): bool
     {
-        return $user->role === 'pegawai';
+        return $user->isAdminSekolah();
     }
 
     /**
-     * Cek apakah masyarakat boleh mengajukan surat keterangan miskin berdasarkan nagari.
-     *
-     * @param  \App\Models\User  $user
-     * @return bool
+     * Siswa sekolah: role = masyarakat, sekolah = 'siswa'
      */
-    public function canRequestSuratKeteranganMiskin(User $user)
+    public function isSiswaSekolah(User $user): bool
     {
-        // Pastikan user punya relasi masyarakat dan nagari
-        if (!$user->masyarakat || !$user->masyarakat->nagari) {
-            return false;
-        }
-        return $user->masyarakat->nagari->surat_keterangan_tidak_mampu === true;
+        return $user->isSiswaSekolah();
+    }
+
+    // ─────────────────────────────────────────────
+    // CEK ROLE GRANULAR (via getRoleLabel)
+    // ─────────────────────────────────────────────
+
+    /**
+     * Pegawai di kantor camat (tanpa nagari).
+     */
+    public function isStafCamat(User $user): bool
+    {
+        return $user->getRoleLabel() === 'staf_camat';
     }
 
     /**
-     * Cek akses pegawai nagari (jabatan_nagari = 'pegawai_nagari').
+     * Pegawai nagari dengan jabatan kepala nagari.
      */
-    public function canAccessSuratKeteranganMiskinPegawaiNagari(User $user)
+    public function isWaliNagari(User $user): bool
     {
-        if (
-            !$user->pegawai ||
-            !$user->pegawai->nagari ||
-            $user->pegawai->jabatan_nagari !== 'pegawai_nagari'
-        ) {
-            return false;
-        }
-        return $user->pegawai->nagari->surat_keterangan_tidak_mampu === true;
+        return $user->getRoleLabel() === 'wali_nagari';
     }
 
     /**
-     * Cek akses kepala nagari (jabatan_nagari = 'kepala_nagari').
+     * Pegawai nagari selain kepala nagari.
      */
-    public function canAccessSuratKeteranganMiskinKepalaNagari(User $user)
+    public function isStafNagari(User $user): bool
     {
-        if (
-            !$user->pegawai ||
-            !$user->pegawai->nagari ||
-            $user->pegawai->jabatan_nagari !== 'kepala_nagari'
-        ) {
-            return false;
-        }
-        return $user->pegawai->nagari->surat_keterangan_tidak_mampu === true;
+        return $user->getRoleLabel() === 'staf_nagari';
     }
 
-      public function is(User $user)
+    // ─────────────────────────────────────────────
+    // KEBIJAKAN SURAT KETERANGAN TIDAK MAMPU
+    // ─────────────────────────────────────────────
+
+    /**
+     * Masyarakat boleh mengajukan jika nagarinya mengaktifkan fitur ini.
+     */
+    public function canRequestSuratKeteranganMiskin(User $user): bool
     {
-        if (
-            !$user->pegawai ||
-            !$user->pegawai->nagari ||
-            $user->pegawai->jabatan_nagari !== 'kepala_nagari'
-        ) {
-            return false;
-        }
-        return $user->pegawai->nagari->surat_keterangan_tidak_mampu === true;
+        return $user->role === 'masyarakat'
+            && $user->masyarakat?->nagari?->surat_keterangan_tidak_mampu === true;
+    }
+
+    /**
+     * Staf nagari boleh memproses jika nagarinya mengaktifkan fitur ini.
+     */
+    public function canAccessSuratKeteranganMiskinPegawaiNagari(User $user): bool
+    {
+        return $user->role === 'pegawai'
+            && $user->pegawai?->jabatan_nagari === 'pegawai_nagari'
+            && $user->pegawai?->nagari?->surat_keterangan_tidak_mampu === true;
+    }
+
+    /**
+     * Wali nagari boleh menyetujui jika nagarinya mengaktifkan fitur ini.
+     */
+    public function canAccessSuratKeteranganMiskinKepalaNagari(User $user): bool
+    {
+        return $user->role === 'pegawai'
+            && $user->pegawai?->jabatan_nagari === 'kepala_nagari'
+            && $user->pegawai?->nagari?->surat_keterangan_tidak_mampu === true;
     }
 }

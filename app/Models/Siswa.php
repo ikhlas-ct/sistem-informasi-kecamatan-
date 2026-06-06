@@ -4,65 +4,78 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class Siswa extends Model
 {
     use HasFactory;
 
-    protected $table = 'siswa';
+    protected $table      = 'siswa';
     protected $primaryKey = 'id_siswa';
 
+    // Kolom yang benar-benar ada di tabel siswa
     protected $fillable = [
         'id_user',
         'id_sekolah',
-        'nama_siswa',
         'nis',
         'kelas',
-        'foto_profil',
-        'status_verifikasi',
-        'alasan_penolakan',
     ];
 
-    // Relasi ke User (akun login siswa)
+    // ── Relasi ───────────────────────────────────────────
+
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user', 'id');
     }
 
-    // Relasi ke Sekolah
     public function sekolah()
     {
         return $this->belongsTo(Sekolah::class, 'id_sekolah', 'id_sekolah');
     }
 
-    // Relasi ke Mading yang dibuat siswa ini
     public function mading()
     {
         return $this->hasMany(Mading::class, 'id_user', 'id_user');
     }
 
-    // Helper: cek apakah siswa sudah diverifikasi
-    public function isApproved(): bool
+    // ── Accessor: ambil data dari masyarakat terkait ─────
+
+    /**
+     * Nama siswa → dari masyarakat yang terhubung ke user-nya.
+     * Pemakaian: $siswa->nama_siswa
+     */
+    public function getNamaSiswaAttribute(): string
     {
-        return $this->status_verifikasi === 'approved';
+        return $this->user?->masyarakat?->nama_masyarakat ?? $this->user?->nip_nik ?? '-';
     }
 
-    // Helper: cek apakah siswa masih pending
-    public function isPending(): bool
+    /**
+     * NIK siswa → dari nip_nik user.
+     */
+    public function getNikAttribute(): string
     {
-        return $this->status_verifikasi === 'pending';
+        return $this->user?->nip_nik ?? '-';
     }
 
-    // Accessor foto profil
-    protected $appends = ['foto_profil_url'];
-
+    /**
+     * Foto profil URL → dari masyarakat, fallback ke default.
+     */
     public function getFotoProfilUrlAttribute(): string
     {
-        if ($this->foto_profil) {
-            return Storage::url($this->foto_profil);
-        }
-
-        return asset('default-image/default-user.png');
+        $foto = $this->user?->masyarakat?->foto_profil;
+        return $foto
+            ? \Illuminate\Support\Facades\Storage::url($foto)
+            : asset('default-image/default-user.png');
     }
+
+    /**
+     * Data masyarakat siswa (shortcut).
+     */
+    public function getMasyarakatAttribute()
+    {
+        return $this->user?->masyarakat;
+    }
+
+    // ── Appends ──────────────────────────────────────────
+
+    protected $appends = ['nama_siswa', 'foto_profil_url'];
 }

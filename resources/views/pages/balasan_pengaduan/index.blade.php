@@ -351,7 +351,7 @@
                             $fileLampiran   = $item->lampiran_pengaduan->where('tipe', 'file');
                             $totalLampiran  = $item->lampiran_pengaduan->count();
                             // Inisial nama masyarakat untuk avatar
-                            $namaMasyarakat = $item->masyarakat->nama ?? '-';
+                            $namaMasyarakat = $item->masyarakat->nama_masyarakat ?? '-';
                             $inisial        = collect(explode(' ', $namaMasyarakat))->take(2)->map(fn($w) => strtoupper(substr($w,0,1)))->join('');
                         @endphp
                         <tr class="{{ !$sudahDibalas && !$isPending ? 'tr-belum-dibalas' : '' }}">

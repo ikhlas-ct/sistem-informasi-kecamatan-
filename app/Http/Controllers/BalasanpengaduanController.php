@@ -8,103 +8,118 @@ use App\Models\Pengaduan;
 use App\Models\Pegawai;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BalasanpengaduanController extends Controller
 {
     /**
-     * Status yang valid untuk pengaduan.
-     * ⚠️  Pastikan nilai-nilai ini SAMA PERSIS dengan ENUM di migrasi/tabel pengaduan.
-     *     Cek dengan: SHOW COLUMNS FROM pengaduan LIKE 'status';
+     * Status yang valid — harus SAMA PERSIS dengan ENUM kolom status di tabel pengaduan.
      */
     private const STATUS_OPTIONS = [
-        'pending'   => 'Pending',
-        'diproses'  => 'Diproses',
-        'selesai'   => 'Selesai',
-        'ditolak'   => 'Ditolak',
+        'pending'  => 'Pending',
+        'diproses' => 'Diproses',
+        'selesai'  => 'Selesai',
+        'ditolak'  => 'Ditolak',
     ];
 
-    /** Status default saat pertama kali membalas */
     private const STATUS_DEFAULT = 'diproses';
 
-    /**
-     * Role yang bisa membalas semua pengaduan (lintas nagari).
-     */
-    private const ROLES_SEMUA  = ['camat', 'staf_camat'];
+    // ─────────────────────────────────────────────────────────────────
+    //  HELPERS
+    // ─────────────────────────────────────────────────────────────────
 
     /**
-     * Role yang hanya bisa membalas pengaduan dari nagari yang sama.
-     */
-    private const ROLES_NAGARI = ['kepala_nagari', 'pegawai_nagari'];
-
-    /**
-     * Ambil Pegawai yang sedang login.
+     * Ambil Pegawai yang sedang login (beserta nagari-nya).
      */
     private function getPegawai(): ?Pegawai
     {
-        $user = Auth::user();
-        if (! $user) return null;
-
-        return Pegawai::with('nagari')->where('id_user', $user->id)->first();
+        return Pegawai::with('nagari')
+            ->where('id_user', Auth::id())
+            ->first();
     }
 
     /**
-     * Validasi apakah pegawai berhak menangani $pengaduan tertentu.
+     * Apakah user yang login adalah camat (bisa akses semua nagari)?
+     * Menggunakan User::role yang sudah divalidasi oleh middleware route:
+     *   middleware(['auth', 'role:pegawai,camat'])
+     */
+    private function isCamat(): bool
+    {
+        return Auth::user()?->role === 'camat';
+    }
+
+    /**
+     * Pastikan pegawai berhak menangani $pengaduan.
+     * - Camat      → bisa semua nagari
+     * - Pegawai    → hanya nagari yang sama dengan pengadu
      */
     private function getAuthorizedPegawai(Pengaduan $pengaduan): ?Pegawai
     {
         $pegawai = $this->getPegawai();
         if (! $pegawai) return null;
 
-        if (in_array($pegawai->role, self::ROLES_SEMUA)) {
-            return $pegawai;
-        }
+        // Camat bisa akses semua
+        if ($this->isCamat()) return $pegawai;
 
-        if (in_array($pegawai->role, self::ROLES_NAGARI)) {
-            $idNagariPengadu = optional($pengaduan->masyarakat)->id_nagari;
-            if ($pegawai->id_nagari && $pegawai->id_nagari == $idNagariPengadu) {
-                return $pegawai;
-            }
+        // Pegawai biasa: cocokkan nagari pengadu dengan nagari pegawai
+        $idNagariPengadu = optional($pengaduan->masyarakat)->id_nagari;
+
+        if ($pegawai->id_nagari && (int) $pegawai->id_nagari === (int) $idNagariPengadu) {
+            return $pegawai;
         }
 
         return null;
     }
 
-    private function isCamat(Pegawai $pegawai): bool
+    /**
+     * Tentukan tipe lampiran: 'gambar' | 'file'
+     * (sesuai ENUM di tabel lampiran_balasan)
+     */
+    private function tipeFile(\Illuminate\Http\UploadedFile $file): string
     {
-        return in_array($pegawai->role, self::ROLES_SEMUA);
+        return Str::startsWith($file->getMimeType(), 'image/') ? 'gambar' : 'file';
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
     //  INDEX
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+
     public function index(Request $request)
     {
         $pegawai = $this->getPegawai();
-        if (! $pegawai) abort(403, 'Akses ditolak.');
+        if (! $pegawai) abort(403, 'Data pegawai tidak ditemukan.');
 
+        // ── Query utama: eager load semua relasi sekaligus (hapus N+1) ──
         $query = Pengaduan::with([
-            'masyarakat.nagari',
-            'lampiran_pengaduan',
-            'balasanpengaduan',
+            'masyarakat.nagari',   // 1 query untuk semua masyarakat + nagari
+            'lampiran_pengaduan',  // 1 query untuk semua lampiran pengaduan
+            'balasanpengaduan',    // 1 query untuk semua balasan
         ]);
 
-        if (! $this->isCamat($pegawai)) {
-            if (! $pegawai->id_nagari) abort(403, 'Nagari pegawai tidak ditemukan.');
-            $query->whereHas('masyarakat', function ($q) use ($pegawai) {
-                $q->where('id_nagari', $pegawai->id_nagari);
-            });
+        // Scope nagari untuk pegawai biasa (bukan camat)
+        if (! $this->isCamat()) {
+            if (! $pegawai->id_nagari) abort(403, 'Nagari pegawai tidak terdaftar.');
+
+            $query->whereHas(
+                'masyarakat',
+                fn($q) =>
+                $q->where('id_nagari', $pegawai->id_nagari)
+            );
         }
 
+        // ── Filter ──────────────────────────────────────────────────
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('judul_pengaduan', 'like', "%{$search}%")
-                    ->orWhere('hal_pengaduan',  'like', "%{$search}%")
-                    ->orWhereHas('masyarakat', function ($q2) use ($search) {
-                        $q2->where('nama_masyarakat', 'like', "%{$search}%");
-                    });
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('judul_pengaduan', 'like', "%{$s}%")
+                    ->orWhere('hal_pengaduan',  'like', "%{$s}%")
+                    ->orWhereHas(
+                        'masyarakat',
+                        fn($m) =>
+                        $m->where('nama_masyarakat', 'like', "%{$s}%")
+                    );
             });
         }
 
@@ -120,6 +135,7 @@ class BalasanpengaduanController extends Controller
             };
         }
 
+        // Pengaduan belum dibalas tampil duluan, lalu urut tanggal terbaru
         $query->orderByRaw("
             CASE WHEN EXISTS (
                 SELECT 1 FROM balasanpengaduan b
@@ -129,27 +145,46 @@ class BalasanpengaduanController extends Controller
 
         $pengaduans = $query->paginate(15)->withQueryString();
 
+        // ── Statistik: 2 query saja (bukan 5) ───────────────────────
         $statsBase = Pengaduan::query();
-        if (! $this->isCamat($pegawai)) {
-            $statsBase->whereHas('masyarakat', fn($q) => $q->where('id_nagari', $pegawai->id_nagari));
+        if (! $this->isCamat()) {
+            $statsBase->whereHas(
+                'masyarakat',
+                fn($q) =>
+                $q->where('id_nagari', $pegawai->id_nagari)
+            );
         }
 
+        // Satu query dengan conditional aggregate
+        $agg = (clone $statsBase)
+            ->selectRaw("
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) AS selesai,
+                SUM(CASE WHEN status = 'ditolak' THEN 1 ELSE 0 END) AS ditolak
+            ")->first();
+
+        $sudahDibalas = (clone $statsBase)->has('balasanpengaduan')->count();
+
         $stats = [
-            'total'         => (clone $statsBase)->count(),
-            'belum_dibalas' => (clone $statsBase)->doesntHave('balasanpengaduan')->count(),
-            'sudah_dibalas' => (clone $statsBase)->has('balasanpengaduan')->count(),
-            'selesai'       => (clone $statsBase)->where('status', 'selesai')->count(),
-            'ditolak'       => (clone $statsBase)->where('status', 'ditolak')->count(),
+            'total'         => (int) ($agg->total    ?? 0),
+            'belum_dibalas' => (int) ($agg->total    ?? 0) - $sudahDibalas,
+            'sudah_dibalas' => $sudahDibalas,
+            'selesai'       => (int) ($agg->selesai  ?? 0),
+            'ditolak'       => (int) ($agg->ditolak  ?? 0),
         ];
 
         $statusOptions = self::STATUS_OPTIONS;
 
-        return view('pages.balasan_pengaduan.index', compact('pengaduans', 'stats', 'pegawai', 'statusOptions'));
+        return view(
+            'pages.balasan_pengaduan.index',
+            compact('pengaduans', 'stats', 'pegawai', 'statusOptions')
+        );
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
     //  CREATE
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+
     public function create($id_pengaduan)
     {
         $pengaduan = Pengaduan::with([
@@ -159,29 +194,33 @@ class BalasanpengaduanController extends Controller
         ])->findOrFail($id_pengaduan);
 
         $pegawai = $this->getAuthorizedPegawai($pengaduan);
-        if (! $pegawai) {
-            abort(403, 'Anda tidak memiliki izin untuk membalas pengaduan ini.');
-        }
+        if (! $pegawai) abort(403, 'Anda tidak memiliki izin untuk membalas pengaduan ini.');
 
+        // Jika sudah dibalas, arahkan ke edit
         if ($pengaduan->balasanpengaduan) {
             return redirect()
                 ->route('balasanpengaduan.edit', $pengaduan->balasanpengaduan->id_balasanpengaduan)
-                ->with('info', 'Pengaduan ini sudah pernah dibalas. Anda dapat mengedit balasan di bawah.');
+                ->with('info', 'Pengaduan ini sudah pernah dibalas. Silakan edit balasan yang ada.');
         }
 
         $statusOptions = self::STATUS_OPTIONS;
         $statusDefault = self::STATUS_DEFAULT;
 
-        return view('pages.balasan_pengaduan.create', compact('pengaduan', 'pegawai', 'statusOptions', 'statusDefault'));
+        return view(
+            'pages.balasan_pengaduan.create',
+            compact('pengaduan', 'pegawai', 'statusOptions', 'statusDefault')
+        );
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
     //  STORE
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+
     public function store(Request $request, $id_pengaduan)
     {
         $pengaduan = Pengaduan::with('masyarakat')->findOrFail($id_pengaduan);
-        $pegawai   = $this->getAuthorizedPegawai($pengaduan);
+
+        $pegawai = $this->getAuthorizedPegawai($pengaduan);
         if (! $pegawai) abort(403);
 
         $validated = $request->validate([
@@ -195,59 +234,75 @@ class BalasanpengaduanController extends Controller
             'tanggal_balasan.required' => 'Tanggal balasan harus diisi.',
             'status.required'          => 'Status pengaduan harus dipilih.',
             'status.in'                => 'Status yang dipilih tidak valid.',
+            'lampiran.max'             => 'Maksimal 10 file lampiran.',
             'lampiran.*.max'           => 'Ukuran tiap file maksimal 10 MB.',
-            'lampiran.*.mimes'         => 'Format file tidak didukung.',
+            'lampiran.*.mimes'         => 'Format file tidak didukung (JPG, PNG, WEBP, PDF, DOC, DOCX).',
         ]);
 
-        $balasan = Balasanpengaduan::create([
-            'id_pegawai'      => $pegawai->id_pegawai,
-            'id_pengaduan'    => $pengaduan->id_pengaduan,
-            'balasan'         => $validated['balasan'],
-            'tanggal_balasan' => $validated['tanggal_balasan'],
-        ]);
+        // Kumpulkan file sebelum transaksi dimulai (upload tidak bisa di-rollback)
+        $uploadedPaths = [];
 
-        if ($request->hasFile('lampiran')) {
-            foreach ($request->file('lampiran') as $file) {
-                $tipe = Str::startsWith($file->getMimeType(), 'image/') ? 'gambar' : 'file';
-                $path = $file->store('lampiran_balasan', 'public');
-                Lampiran_balasan::create([
-                    'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
-                    'tipe'                => $tipe,
-                    'path'                => $path,
-                ]);
+        DB::transaction(function () use ($validated, $request, $pengaduan, $pegawai, &$uploadedPaths) {
+
+            // 1. Simpan balasan
+            $balasan = Balasanpengaduan::create([
+                'id_pegawai'      => $pegawai->id_pegawai,
+                'id_pengaduan'    => $pengaduan->id_pengaduan,
+                'balasan'         => $validated['balasan'],
+                'tanggal_balasan' => $validated['tanggal_balasan'],
+            ]);
+
+            // 2. Simpan lampiran
+            if ($request->hasFile('lampiran')) {
+                foreach ($request->file('lampiran') as $file) {
+                    $path = $file->store('lampiran_balasan', 'public');
+                    $uploadedPaths[] = $path; // catat untuk rollback jika perlu
+
+                    Lampiran_balasan::create([
+                        'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
+                        'tipe'                => $this->tipeFile($file),
+                        'path'                => $path,
+                    ]);
+                }
             }
-        }
 
-        // Update status pengaduan sesuai pilihan (default: diproses)
-        $pengaduan->update(['status' => $validated['status']]);
+            // 3. Update status pengaduan
+            $pengaduan->update(['status' => $validated['status']]);
+        });
 
         return redirect()
             ->route('pengaduan.show', $pengaduan->id_pengaduan)
-            ->with('success', 'Balasan berhasil dikirim dan status pengaduan diperbarui menjadi "' . self::STATUS_OPTIONS[$validated['status']] . '".');
+            ->with('success', 'Balasan berhasil dikirim. Status diperbarui menjadi "' . self::STATUS_OPTIONS[$validated['status']] . '".');
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
     //  EDIT
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+
     public function edit($id)
     {
         $balasan = Balasanpengaduan::with([
             'pengaduan.masyarakat',
-            'lampiran_balasan',
+            'lampiran_balasan',        // eager load agar langsung tampil di view
         ])->findOrFail($id);
 
         $pengaduan = $balasan->pengaduan;
-        $pegawai   = $this->getAuthorizedPegawai($pengaduan);
+
+        $pegawai = $this->getAuthorizedPegawai($pengaduan);
         if (! $pegawai) abort(403, 'Anda tidak memiliki izin untuk mengedit balasan ini.');
 
         $statusOptions = self::STATUS_OPTIONS;
 
-        return view('pages.balasan_pengaduan.edit', compact('balasan', 'pengaduan', 'pegawai', 'statusOptions'));
+        return view(
+            'pages.balasan_pengaduan.edit',
+            compact('balasan', 'pengaduan', 'pegawai', 'statusOptions')
+        );
     }
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
     //  UPDATE
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+
     public function update(Request $request, $id)
     {
         $balasan = Balasanpengaduan::with([
@@ -256,61 +311,81 @@ class BalasanpengaduanController extends Controller
         ])->findOrFail($id);
 
         $pengaduan = $balasan->pengaduan;
-        $pegawai   = $this->getAuthorizedPegawai($pengaduan);
+
+        $pegawai = $this->getAuthorizedPegawai($pengaduan);
         if (! $pegawai) abort(403);
 
         $validated = $request->validate([
-            'balasan'          => 'required|string|max:5000',
-            'tanggal_balasan'  => 'required|date',
-            'status'           => 'required|in:' . implode(',', array_keys(self::STATUS_OPTIONS)),
-            'lampiran'         => 'nullable|array',
-            'lampiran.*'       => 'file|max:10240|mimes:jpg,jpeg,png,webp,pdf,doc,docx',
-            'hapus_lampiran'   => 'nullable|array',
-            'hapus_lampiran.*' => 'integer|exists:lampiran_balasan,id',
+            'balasan'            => 'required|string|max:5000',
+            'tanggal_balasan'    => 'required|date',
+            'status'             => 'required|in:' . implode(',', array_keys(self::STATUS_OPTIONS)),
+            'lampiran'           => 'nullable|array',
+            'lampiran.*'         => 'file|max:10240|mimes:jpg,jpeg,png,webp,pdf,doc,docx',
+            'hapus_lampiran'     => 'nullable|array',
+            'hapus_lampiran.*'   => 'integer|exists:lampiran_balasan,id',
         ], [
             'balasan.required'         => 'Isi balasan tidak boleh kosong.',
             'tanggal_balasan.required' => 'Tanggal balasan harus diisi.',
             'status.required'          => 'Status pengaduan harus dipilih.',
             'status.in'                => 'Status yang dipilih tidak valid.',
             'lampiran.*.max'           => 'Ukuran tiap file maksimal 10 MB.',
-            'lampiran.*.mimes'         => 'Format file tidak didukung.',
+            'lampiran.*.mimes'         => 'Format file tidak didukung (JPG, PNG, WEBP, PDF, DOC, DOCX).',
         ]);
 
-        $balasan->update([
-            'balasan'         => $validated['balasan'],
-            'tanggal_balasan' => $validated['tanggal_balasan'],
-        ]);
+        $pathsToDelete = []; // kumpulkan path file yang akan dihapus dari disk
 
-        if (! empty($validated['hapus_lampiran'])) {
-            foreach ($validated['hapus_lampiran'] as $lid) {
-                $lmp = Lampiran_balasan::find($lid);
-                if ($lmp && $lmp->id_balasanpengaduan == $balasan->id_balasanpengaduan) {
-                    Storage::disk('public')->delete($lmp->path);
+        DB::transaction(function () use ($validated, $request, $balasan, $pengaduan, &$pathsToDelete) {
+
+            // 1. Update teks balasan
+            $balasan->update([
+                'balasan'         => $validated['balasan'],
+                'tanggal_balasan' => $validated['tanggal_balasan'],
+            ]);
+
+            // 2. Tandai dan hapus lampiran lama yang dipilih
+            if (! empty($validated['hapus_lampiran'])) {
+                $toDelete = Lampiran_balasan::whereIn('id', $validated['hapus_lampiran'])
+                    ->where('id_balasanpengaduan', $balasan->id_balasanpengaduan) // validasi kepemilikan
+                    ->get();
+
+                foreach ($toDelete as $lmp) {
+                    $pathsToDelete[] = $lmp->path; // hapus file SETELAH transaksi sukses
                     $lmp->delete();
                 }
             }
-        }
 
-        if ($request->hasFile('lampiran')) {
-            $sisaLampiran = $balasan->lampiran_balasan()->count();
-            foreach ($request->file('lampiran') as $file) {
-                if ($sisaLampiran >= 10) break;
-                $tipe = Str::startsWith($file->getMimeType(), 'image/') ? 'gambar' : 'file';
-                $path = $file->store('lampiran_balasan', 'public');
-                Lampiran_balasan::create([
-                    'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
-                    'tipe'                => $tipe,
-                    'path'                => $path,
-                ]);
-                $sisaLampiran++;
+            // 3. Hitung sisa lampiran setelah penghapusan (fresh dari DB)
+            $sisaLampiran = Lampiran_balasan::where('id_balasanpengaduan', $balasan->id_balasanpengaduan)->count();
+            $newFiles     = $request->hasFile('lampiran') ? count($request->file('lampiran')) : 0;
+
+            if ($sisaLampiran + $newFiles > 10) {
+                throw new \Exception("Total lampiran tidak boleh lebih dari 10 file. Sisa: {$sisaLampiran}, Baru: {$newFiles}.");
             }
-        }
 
-        // Update status pengaduan sesuai pilihan
-        $pengaduan->update(['status' => $validated['status']]);
+            // 4. Simpan lampiran baru
+            if ($request->hasFile('lampiran')) {
+                foreach ($request->file('lampiran') as $file) {
+                    $path = $file->store('lampiran_balasan', 'public');
+
+                    Lampiran_balasan::create([
+                        'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
+                        'tipe'                => $this->tipeFile($file),
+                        'path'                => $path,
+                    ]);
+                }
+            }
+
+            // 5. Update status pengaduan
+            $pengaduan->update(['status' => $validated['status']]);
+        });
+
+        // Hapus file fisik SETELAH transaksi sukses (aman dari rollback)
+        foreach ($pathsToDelete as $path) {
+            Storage::disk('public')->delete($path);
+        }
 
         return redirect()
             ->route('pengaduan.show', $pengaduan->id_pengaduan)
-            ->with('success', 'Balasan berhasil diperbarui. Status pengaduan: "' . self::STATUS_OPTIONS[$validated['status']] . '".');
+            ->with('success', 'Balasan berhasil diperbarui. Status: "' . self::STATUS_OPTIONS[$validated['status']] . '".');
     }
 }

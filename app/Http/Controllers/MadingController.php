@@ -16,19 +16,26 @@ class MadingController extends Controller
     private function getSekolahId()
     {
         $user = Auth::user();
-        if ($user->role === 'sekolah') return $user->sekolah?->id_sekolah;
-        if ($user->role === 'siswa')   return $user->siswa?->id_sekolah;
+
+        // Admin sekolah → ambil id_sekolah dari relasi sekolah (via id_user)
+        if ($user->isAdminSekolah()) return $user->dataSekolah?->id_sekolah;
+
+        // Siswa sekolah → ambil id_sekolah dari relasi siswa (via id_user)
+        if ($user->isSiswaSekolah()) return $user->siswa?->id_sekolah;
+
         return null;
     }
 
     private function isSekolahAdmin(): bool
     {
-        return Auth::user()->role === 'sekolah';
+        // role = 'masyarakat' + sekolah = 'admin'
+        return Auth::user()->isAdminSekolah();
     }
 
     private function isSiswa(): bool
     {
-        return Auth::user()->role === 'siswa';
+        // role = 'masyarakat' + sekolah = 'siswa'
+        return Auth::user()->isSiswaSekolah();
     }
 
     // ── INDEX ────────────────────────────────────────────────────
@@ -138,7 +145,7 @@ class MadingController extends Controller
                 $ext  = $file->getClientOriginalExtension();
                 $tipe = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) ? 'image'
                     : (in_array($ext, ['mp4', 'mov']) ? 'video'
-                    : ($ext === 'pdf' ? 'pdf' : 'lainnya'));
+                        : ($ext === 'pdf' ? 'pdf' : 'lainnya'));
 
                 Lampiran_mading::create([
                     'id_mading' => $mading->id_mading,
@@ -215,7 +222,7 @@ class MadingController extends Controller
                 $ext  = $file->getClientOriginalExtension();
                 $tipe = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) ? 'image'
                     : (in_array($ext, ['mp4', 'mov']) ? 'video'
-                    : ($ext === 'pdf' ? 'pdf' : 'lainnya'));
+                        : ($ext === 'pdf' ? 'pdf' : 'lainnya'));
 
                 Lampiran_mading::create([
                     'id_mading' => $mading->id_mading,
@@ -301,6 +308,33 @@ class MadingController extends Controller
 
         Storage::disk('public')->delete($lampiran->path);
         $lampiran->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ── UPLOAD GAMBAR INLINE SUMMERNOTE ─────────────────────────
+
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:3072',
+        ]);
+
+        $path = $request->file('image')->store('mading/isi', 'public');
+
+        return response()->json(['url' => asset('storage/' . $path)]);
+    }
+
+    // ── HAPUS GAMBAR INLINE SUMMERNOTE ───────────────────────────
+
+    public function deleteImage(Request $request)
+    {
+        $src  = $request->input('src', '');
+        $path = str_replace(asset('storage') . '/', '', $src);
+
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
 
         return response()->json(['success' => true]);
     }
