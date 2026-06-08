@@ -414,7 +414,15 @@
         dropZone.classList.remove('drag-over');
         addFiles([...e.dataTransfer.files]);
     });
-    input.addEventListener('change', () => { addFiles([...input.files]); input.value = ''; });
+    // ⚠️ FIX: salin file DULU ke variabel sementara, baru clear input.value,
+    // baru panggil addFiles() → syncInput() jalan TERAKHIR.
+    // Kalau urutan dibalik (addFiles → input.value=''), browser akan mengosongkan
+    // input.files yang baru saja di-set DataTransfer, sehingga file tidak terkirim.
+    input.addEventListener('change', () => {
+        const selected = [...input.files];
+        input.value = '';           // clear SEBELUM addFiles agar tidak hapus hasil syncInput
+        addFiles(selected);
+    });
 
     function addFiles(newFiles) {
         let errs = [];

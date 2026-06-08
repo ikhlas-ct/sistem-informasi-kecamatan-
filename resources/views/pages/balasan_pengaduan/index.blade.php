@@ -449,23 +449,20 @@
                                 <div class="d-flex flex-wrap gap-1">
                                     {{-- Lihat detail pengaduan --}}
                                     <a href="{{ route('pengaduan.show', $item->id_pengaduan) }}"
-                                       class="btn btn-action btn-detail"
-                                       title="Lihat Detail Pengaduan">
+                                       class="btn btn-action btn-detail">
                                         <i class="fas fa-eye"></i>
                                     </a>
 
                                     {{-- Balas jika belum ada balasan --}}
                                     @if(!$sudahDibalas)
                                         <a href="{{ route('balasanpengaduan.create', ['id_pengaduan' => $item->id_pengaduan]) }}"
-                                           class="btn btn-action btn-balas"
-                                           title="Balas Pengaduan">
+                                           class="btn btn-action btn-balas">
                                             <i class="fas fa-reply"></i>
                                         </a>
                                     @else
                                         {{-- Edit balasan jika sudah ada --}}
                                         <a href="{{ route('balasanpengaduan.edit', $item->balasanpengaduan->id_balasanpengaduan) }}"
-                                           class="btn btn-action btn-edit"
-                                           title="Edit Balasan">
+                                           class="btn btn-action btn-edit">
                                             <i class="fas fa-pencil-alt"></i>
                                         </a>
                                     @endif
@@ -517,16 +514,4 @@
 </div>
 @endsection
 
-@section('scripts')
-<script>
-// Tooltip ringan untuk tombol aksi
-document.querySelectorAll('.btn-action[title]').forEach(btn => {
-    btn.addEventListener('mouseenter', function () {
-        // Gunakan Bootstrap tooltip jika sudah diinisialisasi di layout
-        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-            new bootstrap.Tooltip(this, { trigger: 'manual', placement: 'top' }).show();
-        }
-    });
-});
-</script>
-@endsection
+

@@ -58,6 +58,19 @@
     /* Map */
     #map { height:260px; border-radius:10px; border:1.5px solid #e2e8f0; }
 
+    /* Tombol lokasi sekarang */
+    .btn-locate { display:flex; align-items:center; gap:7px; width:100%; justify-content:center;
+        border:1.5px solid var(--accent); border-radius:10px; padding:7px 14px;
+        font-size:.8rem; font-weight:600; color:var(--accent); background:#fff;
+        cursor:pointer; transition:all .2s; margin-bottom:10px; }
+    .btn-locate:hover { background:var(--accent-light); }
+    .btn-locate:disabled { opacity:.6; cursor:not-allowed; }
+    .btn-locate .spinner { display:none; width:14px; height:14px; border:2px solid var(--accent);
+        border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+    .btn-locate.loading .spinner { display:inline-block; }
+    .btn-locate.loading .loc-icon { display:none; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
     .btn-submit { background:linear-gradient(135deg,#1a73e8,#1557b0); border:none; border-radius:10px;
         font-weight:600; font-size:.88rem; padding:10px 28px; color:#fff; transition:all .2s; }
     .btn-submit:hover { transform:translateY(-1px); filter:brightness(1.07); color:#fff; }
@@ -197,6 +210,12 @@
                                       placeholder="Tulis alamat kejadian…">{{ old('alamat') }}</textarea>
                         </div>
 
+                        <button type="button" class="btn-locate" id="btnLocate">
+                            <i class="fas fa-crosshairs loc-icon"></i>
+                            <span class="spinner"></span>
+                            <span class="loc-label">Gunakan Lokasi Sekarang</span>
+                        </button>
+
                         <div id="map"></div>
                         <div class="form-text mt-2"><i class="fas fa-info-circle me-1"></i>Klik peta untuk pin lokasi</div>
 
@@ -246,6 +265,47 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('longitude').value = lng.toFixed(7);
         if (marker) marker.setLatLng([lat, lng]);
         else marker = L.marker([lat, lng]).addTo(map);
+    });
+
+    // ── Tombol Lokasi Sekarang ────────────────────────────────────
+    const btnLocate = document.getElementById('btnLocate');
+    btnLocate.addEventListener('click', function () {
+        if (!navigator.geolocation) {
+            alert('Browser Anda tidak mendukung geolokasi.'); return;
+        }
+        btnLocate.classList.add('loading');
+        btnLocate.disabled = true;
+        btnLocate.querySelector('.loc-label').textContent = 'Mendapatkan lokasi…';
+
+        navigator.geolocation.getCurrentPosition(
+            function (pos) {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                document.getElementById('latitude').value  = lat.toFixed(7);
+                document.getElementById('longitude').value = lng.toFixed(7);
+                map.setView([lat, lng], 17);
+                if (marker) marker.setLatLng([lat, lng]);
+                else marker = L.marker([lat, lng]).addTo(map);
+                btnLocate.classList.remove('loading');
+                btnLocate.disabled = false;
+                btnLocate.querySelector('.loc-label').textContent = 'Lokasi Ditemukan ✓';
+                setTimeout(() => {
+                    btnLocate.querySelector('.loc-label').textContent = 'Gunakan Lokasi Sekarang';
+                }, 3000);
+            },
+            function (err) {
+                btnLocate.classList.remove('loading');
+                btnLocate.disabled = false;
+                btnLocate.querySelector('.loc-label').textContent = 'Gunakan Lokasi Sekarang';
+                const msg = {
+                    1: 'Izin lokasi ditolak. Mohon izinkan akses lokasi di browser.',
+                    2: 'Lokasi tidak dapat ditentukan.',
+                    3: 'Waktu habis. Coba lagi.'
+                };
+                alert(msg[err.code] || 'Gagal mendapatkan lokasi.');
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
     });
 
     // ── File upload preview ───────────────────────────────────────

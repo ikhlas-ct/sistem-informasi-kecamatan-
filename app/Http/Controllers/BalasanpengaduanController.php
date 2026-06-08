@@ -41,13 +41,27 @@ class BalasanpengaduanController extends Controller
     }
 
     /**
-     * Apakah user yang login adalah camat (bisa akses semua nagari)?
-     * Menggunakan User::role yang sudah divalidasi oleh middleware route:
-     *   middleware(['auth', 'role:pegawai,camat'])
+     * Apakah user yang login punya akses penuh (semua nagari)?
+     * True untuk:
+     *  - camat          → role = 'camat'
+     *  - staf kecamatan → role = 'pegawai' DAN id_nagari IS NULL
+     *
+     * Sesuai logika isSuperAdmin() di User model.
      */
-    private function isCamat(): bool
+    private function hasFullAccess(): bool
     {
-        return Auth::user()?->role === 'camat';
+        $user = Auth::user();
+        if (! $user) return false;
+
+        if ($user->role === 'camat') return true;
+
+        // Staf kecamatan: pegawai yang tidak terikat ke nagari manapun
+        if ($user->role === 'pegawai') {
+            $pegawai = $this->getPegawai();
+            return $pegawai && is_null($pegawai->id_nagari);
+        }
+
+        return false;
     }
 
     /**
@@ -60,8 +74,8 @@ class BalasanpengaduanController extends Controller
         $pegawai = $this->getPegawai();
         if (! $pegawai) return null;
 
-        // Camat bisa akses semua
-        if ($this->isCamat()) return $pegawai;
+        // Camat & staf kecamatan bisa akses semua nagari
+        if ($this->hasFullAccess()) return $pegawai;
 
         // Pegawai biasa: cocokkan nagari pengadu dengan nagari pegawai
         $idNagariPengadu = optional($pengaduan->masyarakat)->id_nagari;
@@ -76,10 +90,15 @@ class BalasanpengaduanController extends Controller
     /**
      * Tentukan tipe lampiran: 'gambar' | 'file'
      * (sesuai ENUM di tabel lampiran_balasan)
+     *
+     * FIX: pakai ekstensi, bukan getMimeType() — lebih konsisten
+     * di semua server (getMimeType() butuh fileinfo extension
+     * dan bisa mengembalikan null pada beberapa konfigurasi server).
      */
     private function tipeFile(\Illuminate\Http\UploadedFile $file): string
     {
-        return Str::startsWith($file->getMimeType(), 'image/') ? 'gambar' : 'file';
+        $ext = strtolower($file->getClientOriginalExtension());
+        return in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif']) ? 'gambar' : 'file';
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -98,8 +117,8 @@ class BalasanpengaduanController extends Controller
             'balasanpengaduan',    // 1 query untuk semua balasan
         ]);
 
-        // Scope nagari untuk pegawai biasa (bukan camat)
-        if (! $this->isCamat()) {
+        // Scope nagari untuk pegawai nagari (bukan camat/staf kecamatan)
+        if (! $this->hasFullAccess()) {
             if (! $pegawai->id_nagari) abort(403, 'Nagari pegawai tidak terdaftar.');
 
             $query->whereHas(
@@ -147,7 +166,7 @@ class BalasanpengaduanController extends Controller
 
         // ── Statistik: 2 query saja (bukan 5) ───────────────────────
         $statsBase = Pengaduan::query();
-        if (! $this->isCamat()) {
+        if (! $this->hasFullAccess()) {
             $statsBase->whereHas(
                 'masyarakat',
                 fn($q) =>
@@ -239,36 +258,50 @@ class BalasanpengaduanController extends Controller
             'lampiran.*.mimes'         => 'Format file tidak didukung (JPG, PNG, WEBP, PDF, DOC, DOCX).',
         ]);
 
-        // Kumpulkan file sebelum transaksi dimulai (upload tidak bisa di-rollback)
+        // Catat path file yang berhasil diupload secara fisik.
+        // Jika transaksi DB gagal, file-file ini harus dihapus manual
+        // karena Storage::put() tidak ikut di-rollback oleh DB::transaction().
         $uploadedPaths = [];
 
-        DB::transaction(function () use ($validated, $request, $pengaduan, $pegawai, &$uploadedPaths) {
+        try {
+            DB::transaction(function () use ($validated, $request, $pengaduan, $pegawai, &$uploadedPaths) {
 
-            // 1. Simpan balasan
-            $balasan = Balasanpengaduan::create([
-                'id_pegawai'      => $pegawai->id_pegawai,
-                'id_pengaduan'    => $pengaduan->id_pengaduan,
-                'balasan'         => $validated['balasan'],
-                'tanggal_balasan' => $validated['tanggal_balasan'],
-            ]);
+                // 1. Simpan balasan
+                $balasan = Balasanpengaduan::create([
+                    'id_pegawai'      => $pegawai->id_pegawai,
+                    'id_pengaduan'    => $pengaduan->id_pengaduan,
+                    'balasan'         => $validated['balasan'],
+                    'tanggal_balasan' => $validated['tanggal_balasan'],
+                ]);
 
-            // 2. Simpan lampiran
-            if ($request->hasFile('lampiran')) {
-                foreach ($request->file('lampiran') as $file) {
-                    $path = $file->store('lampiran_balasan', 'public');
-                    $uploadedPaths[] = $path; // catat untuk rollback jika perlu
+                // 2. Simpan lampiran
+                // File sudah tervalidasi oleh $request->validate() di atas,
+                // jadi cukup loop langsung.
+                if ($request->hasFile('lampiran')) {
+                    foreach ($request->file('lampiran') as $file) {
+                        // Simpan ke storage/app/public/lampiran_balasan/
+                        // Akses via: asset('storage/lampiran_balasan/...')
+                        $path = $file->store('lampiran_balasan', 'public');
+                        $uploadedPaths[] = $path; // catat untuk rollback fisik jika perlu
 
-                    Lampiran_balasan::create([
-                        'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
-                        'tipe'                => $this->tipeFile($file),
-                        'path'                => $path,
-                    ]);
+                        Lampiran_balasan::create([
+                            'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
+                            'tipe'                => $this->tipeFile($file),
+                            'path'                => $path,
+                        ]);
+                    }
                 }
-            }
 
-            // 3. Update status pengaduan
-            $pengaduan->update(['status' => $validated['status']]);
-        });
+                // 3. Update status pengaduan
+                $pengaduan->update(['status' => $validated['status']]);
+            });
+        } catch (\Throwable $e) {
+            // Transaksi DB gagal → hapus file fisik yang sudah terlanjur diupload
+            foreach ($uploadedPaths as $path) {
+                Storage::disk('public')->delete($path);
+            }
+            throw $e; // lempar ulang agar Laravel tampilkan pesan error
+        }
 
         return redirect()
             ->route('pengaduan.show', $pengaduan->id_pengaduan)
@@ -332,54 +365,64 @@ class BalasanpengaduanController extends Controller
             'lampiran.*.mimes'         => 'Format file tidak didukung (JPG, PNG, WEBP, PDF, DOC, DOCX).',
         ]);
 
-        $pathsToDelete = []; // kumpulkan path file yang akan dihapus dari disk
+        $pathsToDelete   = []; // file lama yang akan dihapus dari disk setelah transaksi sukses
+        $newUploadedPaths = []; // file baru yang diupload, untuk rollback jika transaksi gagal
 
-        DB::transaction(function () use ($validated, $request, $balasan, $pengaduan, &$pathsToDelete) {
+        try {
+            DB::transaction(function () use ($validated, $request, $balasan, $pengaduan, &$pathsToDelete, &$newUploadedPaths) {
 
-            // 1. Update teks balasan
-            $balasan->update([
-                'balasan'         => $validated['balasan'],
-                'tanggal_balasan' => $validated['tanggal_balasan'],
-            ]);
+                // 1. Update teks balasan
+                $balasan->update([
+                    'balasan'         => $validated['balasan'],
+                    'tanggal_balasan' => $validated['tanggal_balasan'],
+                ]);
 
-            // 2. Tandai dan hapus lampiran lama yang dipilih
-            if (! empty($validated['hapus_lampiran'])) {
-                $toDelete = Lampiran_balasan::whereIn('id', $validated['hapus_lampiran'])
-                    ->where('id_balasanpengaduan', $balasan->id_balasanpengaduan) // validasi kepemilikan
-                    ->get();
+                // 2. Tandai dan hapus lampiran lama yang dipilih
+                if (! empty($validated['hapus_lampiran'])) {
+                    $toDelete = Lampiran_balasan::whereIn('id', $validated['hapus_lampiran'])
+                        ->where('id_balasanpengaduan', $balasan->id_balasanpengaduan) // validasi kepemilikan
+                        ->get();
 
-                foreach ($toDelete as $lmp) {
-                    $pathsToDelete[] = $lmp->path; // hapus file SETELAH transaksi sukses
-                    $lmp->delete();
+                    foreach ($toDelete as $lmp) {
+                        $pathsToDelete[] = $lmp->path; // hapus file SETELAH transaksi sukses
+                        $lmp->delete();
+                    }
                 }
-            }
 
-            // 3. Hitung sisa lampiran setelah penghapusan (fresh dari DB)
-            $sisaLampiran = Lampiran_balasan::where('id_balasanpengaduan', $balasan->id_balasanpengaduan)->count();
-            $newFiles     = $request->hasFile('lampiran') ? count($request->file('lampiran')) : 0;
+                // 3. Hitung sisa lampiran setelah penghapusan (fresh dari DB)
+                $sisaLampiran = Lampiran_balasan::where('id_balasanpengaduan', $balasan->id_balasanpengaduan)->count();
+                $newFiles     = $request->hasFile('lampiran') ? count($request->file('lampiran')) : 0;
 
-            if ($sisaLampiran + $newFiles > 10) {
-                throw new \Exception("Total lampiran tidak boleh lebih dari 10 file. Sisa: {$sisaLampiran}, Baru: {$newFiles}.");
-            }
-
-            // 4. Simpan lampiran baru
-            if ($request->hasFile('lampiran')) {
-                foreach ($request->file('lampiran') as $file) {
-                    $path = $file->store('lampiran_balasan', 'public');
-
-                    Lampiran_balasan::create([
-                        'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
-                        'tipe'                => $this->tipeFile($file),
-                        'path'                => $path,
-                    ]);
+                if ($sisaLampiran + $newFiles > 10) {
+                    throw new \Exception("Total lampiran tidak boleh lebih dari 10 file. Sisa: {$sisaLampiran}, Baru: {$newFiles}.");
                 }
+
+                // 4. Simpan lampiran baru
+                if ($request->hasFile('lampiran')) {
+                    foreach ($request->file('lampiran') as $file) {
+                        $path = $file->store('lampiran_balasan', 'public');
+                        $newUploadedPaths[] = $path; // catat untuk rollback fisik jika perlu
+
+                        Lampiran_balasan::create([
+                            'id_balasanpengaduan' => $balasan->id_balasanpengaduan,
+                            'tipe'                => $this->tipeFile($file),
+                            'path'                => $path,
+                        ]);
+                    }
+                }
+
+                // 5. Update status pengaduan
+                $pengaduan->update(['status' => $validated['status']]);
+            });
+        } catch (\Throwable $e) {
+            // Transaksi gagal → hapus file baru yang sudah terlanjur diupload secara fisik
+            foreach ($newUploadedPaths as $path) {
+                Storage::disk('public')->delete($path);
             }
+            throw $e;
+        }
 
-            // 5. Update status pengaduan
-            $pengaduan->update(['status' => $validated['status']]);
-        });
-
-        // Hapus file fisik SETELAH transaksi sukses (aman dari rollback)
+        // Hapus file lama secara fisik SETELAH transaksi sukses
         foreach ($pathsToDelete as $path) {
             Storage::disk('public')->delete($path);
         }
