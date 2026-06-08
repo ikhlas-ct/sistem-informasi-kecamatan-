@@ -99,15 +99,17 @@
     <div class="info-box">
         <i class="fas fa-info-circle mt-1"></i>
         <div>
-            <strong>Mode Superadmin:</strong> Anda dapat memilih nagari secara bebas.
-            Setelah memilih nagari, daftar masyarakat yang tersedia akan dimuat otomatis.
+            {{-- PERBAIKAN: superadmin dapat memilih masyarakat dari nagari mana pun --}}
+            <strong>Mode Superadmin:</strong> Anda dapat memilih nagari sekolah secara bebas.
+            Daftar administrator tersedia dari <strong>semua nagari</strong> — tidak dibatasi nagari tertentu.
         </div>
     </div>
     @else
     <div class="info-box">
         <i class="fas fa-info-circle mt-1"></i>
         <div>
-            <strong>Nagari Terkunci:</strong> Sekolah akan otomatis terdaftar di nagari Anda ({{ $nagariTerpilih?->nama_nagari ?? '-' }}).
+            <strong>Nagari Terkunci:</strong> Sekolah akan otomatis terdaftar di nagari Anda
+            ({{ $nagariTerpilih?->nama_nagari ?? '-' }}). Administrator dipilih dari masyarakat nagari Anda.
         </div>
     </div>
     @endif
@@ -216,10 +218,9 @@
                             <label>Nagari <span class="required-mark">*</span></label>
 
                             @if($bisaPilihNagari)
-                                {{-- Camat / Staf Camat: bebas pilih nagari --}}
+                                {{-- Camat / Staf Camat: bebas pilih nagari (tidak lagi mengontrol daftar user) --}}
                                 <select id="id_nagari" name="id_nagari"
-                                        class="form-select @error('id_nagari') is-invalid @enderror"
-                                        onchange="onNagariChange(this.value)">
+                                        class="form-select @error('id_nagari') is-invalid @enderror">
                                     <option value="">-- Pilih Nagari --</option>
                                     @foreach($nagaris as $n)
                                         <option value="{{ $n->id }}" {{ old('id_nagari') == $n->id ? 'selected' : '' }}>
@@ -230,7 +231,7 @@
                                 @error('id_nagari')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <div class="form-text">Pilih nagari terlebih dahulu, lalu pilih administrator sekolah.</div>
+                                <div class="form-text">Pilih nagari tempat sekolah berada.</div>
 
                             @else
                                 {{-- Kepala Nagari / Staf Nagari: nagari terkunci otomatis --}}
@@ -245,45 +246,42 @@
                         </div>
 
                         {{-- ── USER / KEPALA SEKOLAH ── --}}
+                        {{--
+                            PERBAIKAN: Daftar masyarakat kini dimuat langsung dari server untuk semua role.
+                            - Superadmin  : $userMasyarakat berisi semua masyarakat (tanpa filter nagari)
+                            - Pegawai nagari: $userMasyarakat berisi masyarakat di nagarinya saja
+                            AJAX tidak lagi diperlukan.
+                        --}}
                         <div class="mb-3">
                             <label for="id_user">Kepala Sekolah / Administrator <span class="required-mark">*</span></label>
-
-                            @if($bisaPilihNagari)
-                                {{-- Camat / Staf Camat: dimuat via AJAX setelah nagari dipilih --}}
-                                <select id="id_user" name="id_user"
-                                        class="form-select @error('id_user') is-invalid @enderror"
-                                        disabled>
-                                    <option value="">-- Pilih nagari dulu --</option>
-                                </select>
-                                <div id="user-loading" class="form-text d-none">
-                                    <span class="spinner-border spinner-border-sm text-secondary me-1"></span> Memuat data...
-                                </div>
-                                <div class="form-text" id="user-hint">Daftar masyarakat akan muncul setelah nagari dipilih.</div>
-                                @error('id_user')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-
-                            @else
-                                {{-- Kepala / Staf Nagari: langsung tampilkan masyarakat di nagarinya --}}
-                                <select id="id_user" name="id_user"
-                                        class="form-select @error('id_user') is-invalid @enderror">
-                                    <option value="">-- Pilih Administrator --</option>
-                                    @forelse($userMasyarakat as $u)
-                                        <option value="{{ $u->id }}" {{ old('id_user') == $u->id ? 'selected' : '' }}>
-                                            {{ $u->nip_nik }}
-                                            @if($u->masyarakat?->nama_masyarakat)
-                                                – {{ $u->masyarakat->nama_masyarakat }}
-                                            @endif
-                                        </option>
-                                    @empty
-                                        <option disabled>Tidak ada masyarakat tersedia di nagari ini</option>
-                                    @endforelse
-                                </select>
-                                @error('id_user')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-text">Pilih masyarakat yang akan menjadi kepala sekolah / administrator akun sekolah.</div>
-                            @endif
+                            <select id="id_user" name="id_user"
+                                    class="form-select @error('id_user') is-invalid @enderror">
+                                <option value="">-- Pilih Administrator --</option>
+                                @forelse($userMasyarakat as $u)
+                                    <option value="{{ $u->id }}" {{ old('id_user') == $u->id ? 'selected' : '' }}>
+                                        {{ $u->nip_nik }}
+                                        @if($u->masyarakat?->nama_masyarakat)
+                                            – {{ $u->masyarakat->nama_masyarakat }}
+                                        @endif
+                                        @if($u->masyarakat?->nagari?->nama_nagari && $bisaPilihNagari)
+                                            {{-- Superadmin: tampilkan asal nagari agar mudah dibedakan --}}
+                                            ({{ $u->masyarakat->nagari->nama_nagari }})
+                                        @endif
+                                    </option>
+                                @empty
+                                    <option disabled>Tidak ada masyarakat tersedia</option>
+                                @endforelse
+                            </select>
+                            @error('id_user')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">
+                                @if($bisaPilihNagari)
+                                    Pilih masyarakat yang akan menjadi administrator. Nama nagari asal ditampilkan dalam tanda kurung.
+                                @else
+                                    Pilih masyarakat yang akan menjadi kepala sekolah / administrator akun sekolah.
+                                @endif
+                            </div>
                         </div>
 
                     </div>
@@ -397,58 +395,8 @@ logoInput.addEventListener('change', function () {
     });
 });
 
-// ── AJAX: load user by nagari (hanya untuk camat & staf camat) ──
-@if($bisaPilihNagari)
-function onNagariChange(idNagari) {
-    const select  = document.getElementById('id_user');
-    const loading = document.getElementById('user-loading');
-    const hint    = document.getElementById('user-hint');
-
-    if (!idNagari) {
-        select.innerHTML = '<option value="">-- Pilih nagari dulu --</option>';
-        select.disabled  = true;
-        return;
-    }
-
-    select.disabled = true;
-    loading.classList.remove('d-none');
-    hint.style.display = 'none';
-
-    fetch(`{{ route('sekolah.ajax.user-by-nagari') }}?id_nagari=${idNagari}`, {
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(users => {
-        select.innerHTML = '<option value="">-- Pilih Administrator --</option>';
-        if (users.length === 0) {
-            select.innerHTML += '<option disabled>Tidak ada masyarakat tersedia di nagari ini</option>';
-        } else {
-            users.forEach(u => {
-                const opt       = document.createElement('option');
-                opt.value       = u.id;
-                opt.textContent = u.nip_nik + (u.nama_masyarakat ? ' – ' + u.nama_masyarakat : '');
-                @if(old('id_user'))
-                if (u.id == {{ old('id_user') }}) opt.selected = true;
-                @endif
-                select.appendChild(opt);
-            });
-        }
-        select.disabled = false;
-        loading.classList.add('d-none');
-        hint.style.display = '';
-    })
-    .catch(() => {
-        select.innerHTML = '<option value="">-- Gagal memuat, coba lagi --</option>';
-        loading.classList.add('d-none');
-        hint.style.display = '';
-        select.disabled = false;
-    });
-}
-
-// Jika ada old('id_nagari') setelah validation fail → reload users
-@if(old('id_nagari'))
-document.addEventListener('DOMContentLoaded', () => onNagariChange('{{ old("id_nagari") }}'));
-@endif
-@endif
+// PERBAIKAN: AJAX user-by-nagari dihapus.
+// Daftar masyarakat kini langsung tersedia dari server untuk semua role.
+// Superadmin dapat memilih dari semua masyarakat tanpa harus pilih nagari dulu.
 </script>
 @endsection

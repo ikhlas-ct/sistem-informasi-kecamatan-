@@ -25,39 +25,59 @@ class Sekolah extends Model
         'status',
     ];
 
-    // Relasi ke User (akun login sekolah)
+    // ── Relasi ke User (akun login sekolah) ──────────────────────────────
+
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user', 'id');
     }
 
-    // Relasi ke Nagari
+    // ── Relasi ke Nagari ─────────────────────────────────────────────────
+
     public function nagari()
     {
         return $this->belongsTo(Nagari::class, 'id_nagari', 'id');
     }
 
-    // Relasi ke Siswa
+    // ── Relasi ke Siswa ──────────────────────────────────────────────────
+
+    /**
+     * Semua siswa di sekolah ini.
+     * Eager-load user.masyarakat agar accessor seperti
+     * $siswa->nama_siswa, $siswa->nik, $siswa->foto_profil_url tersedia
+     * tanpa query N+1.
+     */
     public function siswa()
     {
-        return $this->hasMany(Siswa::class, 'id_sekolah', 'id_sekolah');
+        return $this->hasMany(Siswa::class, 'id_sekolah', 'id_sekolah')
+            ->with('user.masyarakat');
     }
 
-    // Relasi ke Siswa yang sudah approved saja
+    /**
+     * Siswa aktif → user.status = 'aktif'.
+     *
+     * PERBAIKAN: kolom 'status_verifikasi' tidak ada di tabel siswa.
+     * Status aktif/nonaktif siswa diambil dari kolom users.status.
+     */
     public function siswaAktif()
     {
         return $this->hasMany(Siswa::class, 'id_sekolah', 'id_sekolah')
-            ->where('status_verifikasi', 'approved');
+            ->whereHas('user', fn($q) => $q->where('status', 'aktif'));
     }
 
-    // Relasi ke Siswa pending (menunggu approval)
+    /**
+     * Siswa nonaktif/pending → user.status = 'nonaktif'.
+     *
+     * PERBAIKAN: sama dengan siswaAktif, diganti ke users.status.
+     */
     public function siswaPending()
     {
         return $this->hasMany(Siswa::class, 'id_sekolah', 'id_sekolah')
-            ->where('status_verifikasi', 'pending');
+            ->whereHas('user', fn($q) => $q->where('status', 'nonaktif'));
     }
 
-    // Relasi ke Mading milik sekolah ini
+    // ── Relasi ke Mading ─────────────────────────────────────────────────
+
     public function mading()
     {
         return $this->hasMany(Mading::class, 'id_sekolah', 'id_sekolah');

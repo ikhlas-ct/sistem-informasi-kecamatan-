@@ -34,7 +34,7 @@ class ProfilmasyarakatController extends Controller
             'jenis_kelamin' => 'required|string|in:laki-laki,perempuan',
             'no_hp' => 'required|string|max:15',
             'nama_masyarakat' => 'required|string|max:255',
-            'nama_ibu' => 'required|string|max:255',
+            'nama_ibu' => 'nullable|string|max:255',
             'alamat' => 'required|string|max:255',
             'scan_ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'scan_kk' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -52,14 +52,29 @@ class ProfilmasyarakatController extends Controller
         ]);
 
         $data = $request->only([
-            'nik', 'kk', 'jenis_kelamin', 'no_hp',
-            'nama_masyarakat', 'nama_ibu', 'alamat', 'instagram', 'twitter', 'facebook', 'deskripsi', 'pekerjaan', 'id_nagari'
+            'nik',
+            'kk',
+            'jenis_kelamin',
+            'no_hp',
+            'nama_masyarakat',
+            'nama_ibu',
+            'alamat',
+            'instagram',
+            'twitter',
+            'facebook',
+            'deskripsi',
+            'pekerjaan',
+            'id_nagari'
         ]);
 
         // Handle file uploads
         $fileFields = [
-            'scan_ktp', 'scan_kk', 'foto_diri_ktp',
-            'akta_kelahiran', 'foto_diri_akta', 'foto_profil',
+            'scan_ktp',
+            'scan_kk',
+            'foto_diri_ktp',
+            'akta_kelahiran',
+            'foto_diri_akta',
+            'foto_profil',
         ];
 
         foreach ($fileFields as $field) {

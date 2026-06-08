@@ -150,6 +150,89 @@
 
 
 
+<!-- Mading Sekolah Section -->
+<section id="mading-sekolah" class="section py-5" data-aos="fade-up" data-aos-delay="200">
+    <div class="container">
+        <!-- Header -->
+        <div class="row mb-3 justify-content-between align-items-center" data-aos="fade-down" data-aos-delay="300">
+            <div class="col-auto">
+                <h2 class="fw-bold">Mading Sekolah</h2>
+                <p class="text-muted"><em>Karya dan informasi terkini dari sekolah-sekolah di wilayah kami</em></p>
+            </div>
+            <div class="col-auto">
+                <a href="{{ route('home.mading') }}" class="fw-bold text-decoration-none">Lihat Semua</a>
+            </div>
+        </div>
+
+        @if($mading->isEmpty())
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-newspaper" style="font-size:2.5rem;"></i>
+                <p class="mt-2">Belum ada mading yang dipublikasikan.</p>
+            </div>
+        @else
+        <!-- Grid Card Mading -->
+        <div class="row gy-4" data-aos="fade-up" data-aos-delay="400">
+            @foreach ($mading as $item)
+            <div class="col-lg-3 col-md-6" data-aos="zoom-in" data-aos-delay="500">
+                <div class="card border-0 shadow-sm h-100">
+                    <!-- Gambar Mading -->
+                    @if($item->gambar)
+                        <img src="{{ asset('storage/' . $item->gambar) }}"
+                             class="card-img-top" alt="{{ $item->judul }}"
+                             style="height: 180px; object-fit: cover;">
+                    @else
+                        <div class="d-flex align-items-center justify-content-center bg-light"
+                             style="height:180px;">
+                            <i class="bi bi-newspaper text-secondary" style="font-size:2.5rem;"></i>
+                        </div>
+                    @endif
+
+                    <div class="card-body d-flex flex-column">
+                        <!-- Badge Jenis -->
+                        @if($item->jenis)
+                            <span class="badge bg-primary mb-2" style="width:fit-content;font-size:.7rem;">
+                                {{ ucfirst(str_replace('_', ' ', $item->jenis)) }}
+                            </span>
+                        @endif
+
+                        <!-- Meta: Sekolah, Tanggal, Komentar -->
+                        <div class="d-flex justify-content-between text-muted mb-2" style="font-size:12px;">
+                            <span class="text-truncate" style="max-width:110px;">
+                                {{ $item->sekolah->nama_sekolah ?? 'Sekolah' }}
+                            </span>
+                            <span>{{ $item->tanggal_publikasi?->format('d M Y') }}</span>
+                            <span>{{ $item->komentar_count ?? 0 }} Komentar</span>
+                        </div>
+
+                        <!-- Judul -->
+                        <a href="{{ route('home.mading.detail', $item->slug) }}"
+                           class="text-decoration-none" style="color:#000;">
+                            <h5 class="card-title fw-bold" style="font-size:.95rem;">{{ $item->judul }}</h5>
+                        </a>
+
+                        <!-- Ringkasan -->
+                        <p class="card-text" style="font-size:.85rem;">
+                            {{ Str::limit(html_entity_decode(strip_tags($item->isi)), 60) }}
+                        </p>
+
+                        <!-- Tombol -->
+                        <div class="mt-auto text-end">
+                            <a href="{{ route('home.mading.detail', $item->slug) }}"
+                               class="btn btn-sm btn-outline-primary w-100">
+                                Baca Selengkapnya
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+    </div>
+</section>
+
+
+
 <section id="gallery" class="gallery section bg-light py-5">
     <div class="container" data-aos="fade-up">
         <div class="section-header text-center mb-5">

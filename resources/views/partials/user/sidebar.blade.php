@@ -132,7 +132,7 @@
                     </div>
                 </li>
 
-                <li class="nav-item">
+                {{-- <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#surat">
                         <i class="fas fa-th-list"></i><p>Surat</p><span class="caret"></span>
                     </a>
@@ -148,7 +148,7 @@
                             </li>
                         </ul>
                     </div>
-                </li>
+                </li> --}}
 
                 {{-- ── DOKUMEN BERSAMA (Camat) ── --}}
                 <li class="nav-section">
@@ -261,7 +261,7 @@
                         </ul>
                     </div>
                 </li>
-
+{{--
                 @can('canRequestSuratKeteranganMiskin', auth()->user())
                     <li class="nav-item">
                         <a data-bs-toggle="collapse" href="#surat">
@@ -274,7 +274,7 @@
                             </ul>
                         </div>
                     </li>
-                @endcan
+                @endcan --}}
 
                 {{-- ── DOKUMEN BERSAMA (Masyarakat) ── --}}
                 <li class="nav-item {{ request()->routeIs('dokumen.*') ? 'active' : '' }}">
@@ -361,7 +361,7 @@
                         </ul>
                     </div>
                 </li>
-
+{{--
                 @can('canAccessSuratKeteranganMiskinPegawaiNagari', auth()->user())
                     <li class="nav-item">
                         <a data-bs-toggle="collapse" href="#surat">
@@ -381,9 +381,9 @@
                             </ul>
                         </div>
                     </li>
-                @endcan
+                @endcan --}}
 
-                @can('canAccessSuratKeteranganMiskinKepalaNagari', auth()->user())
+                {{-- @can('canAccessSuratKeteranganMiskinKepalaNagari', auth()->user())
                     <li class="nav-item">
                         <a data-bs-toggle="collapse" href="#surat">
                             <i class="fas fa-th-list"></i><p>Surat</p><span class="caret"></span>
@@ -402,7 +402,7 @@
                             </ul>
                         </div>
                     </li>
-                @endcan
+                @endcan --}}
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#Potensi">
@@ -618,7 +618,7 @@
                 </li>
 
                 {{-- Surat (hanya jika berhak) --}}
-                @can('canRequestSuratKeteranganMiskin', auth()->user())
+                {{-- @can('canRequestSuratKeteranganMiskin', auth()->user())
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#suratSek">
                         <i class="fas fa-envelope"></i><p>Surat</p><span class="caret"></span>
@@ -629,7 +629,7 @@
                         </ul>
                     </div>
                 </li>
-                @endcan
+                @endcan --}}
 
                 {{-- Pengaduan --}}
                 <li class="nav-item">
@@ -716,7 +716,7 @@
                 </li>
 
                 {{-- Surat (hanya jika berhak) --}}
-                @can('canRequestSuratKeteranganMiskin', auth()->user())
+                {{-- @can('canRequestSuratKeteranganMiskin', auth()->user())
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#suratSiswa">
                         <i class="fas fa-envelope"></i><p>Surat</p><span class="caret"></span>
@@ -727,7 +727,7 @@
                         </ul>
                     </div>
                 </li>
-                @endcan
+                @endcan --}}
 
                 {{-- Pengaduan --}}
                 <li class="nav-item">

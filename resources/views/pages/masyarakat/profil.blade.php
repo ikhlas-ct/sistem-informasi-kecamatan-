@@ -336,7 +336,7 @@
                                     <input type="text" name="nik" class="form-control @error('nik') is-invalid @enderror"
                                            value="{{ old('nik', $profil->nik) }}"
                                            placeholder="16 digit angka" maxlength="16"
-                                           oninput="this.value=this.value.replace(/\D/,'')">
+                                           oninput="this.value=this.value.replace(/\D/g,'')">
                                     <div class="form-text">16 digit angka sesuai KTP</div>
                                     @error('nik') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
@@ -345,7 +345,7 @@
                                     <input type="text" name="kk" class="form-control @error('kk') is-invalid @enderror"
                                            value="{{ old('kk', $profil->kk) }}"
                                            placeholder="16 digit angka" maxlength="16"
-                                           oninput="this.value=this.value.replace(/\D/,'')">
+                                           oninput="this.value=this.value.replace(/\D/g,'')">
                                     <div class="form-text">16 digit angka sesuai Kartu Keluarga</div>
                                     @error('kk') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
@@ -419,6 +419,7 @@
                     @csrf @method('PUT')
                     {{-- Kirim field wajib tersembunyi agar tidak error validasi --}}
                     <input type="hidden" name="nama_masyarakat" value="{{ $profil->nama_masyarakat }}">
+                    <input type="hidden" name="nama_ibu" value="{{ $profil->nama_ibu }}">
                     <input type="hidden" name="nik" value="{{ $profil->nik }}">
                     <input type="hidden" name="kk" value="{{ $profil->kk }}">
                     <input type="hidden" name="no_hp" value="{{ $profil->no_hp }}">
@@ -493,6 +494,7 @@
                 <form action="{{ route('masyarakat.profil_update') }}" method="POST" enctype="multipart/form-data">
                     @csrf @method('PUT')
                     <input type="hidden" name="nama_masyarakat" value="{{ $profil->nama_masyarakat }}">
+                    <input type="hidden" name="nama_ibu" value="{{ $profil->nama_ibu }}">
                     <input type="hidden" name="nik" value="{{ $profil->nik }}">
                     <input type="hidden" name="kk" value="{{ $profil->kk }}">
                     <input type="hidden" name="no_hp" value="{{ $profil->no_hp }}">

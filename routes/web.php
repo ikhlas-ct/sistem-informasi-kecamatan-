@@ -172,7 +172,7 @@ Route::middleware(['auth', 'role:pegawai,camat'])->group(function () {
     Route::get('pengaturan/masyarakat/show/{masyarakat}', [PengaturanmasyarakatController::class, 'show'])->name('camat.masyarakat.show');
     Route::patch('pengaturan/masyarakat/{masyarakat}/password', [PengaturanmasyarakatController::class, 'updatePassword'])->name('camat.masyarakat.updatePassword');
     Route::patch('pengaturan/masyarakat/{masyarakat}/toggle-status', [PengaturanmasyarakatController::class, 'toggleStatus'])->name('camat.masyarakat.toggleStatus');
-    Route::put('/masyarakat/{id}', [MasyarakatController::class, 'update'])->name('camat.masyarakat.update');
+    Route::put('/pengaturan/masyarakat/{id}', [MasyarakatController::class, 'update'])->name('camat.masyarakat.update');
 
     Route::get('profil', [ProfilpegawaiController::class, 'profil'])->name('pegawai.profil');
     Route::put('profil', [ProfilpegawaiController::class, 'profil_update'])->name('pegawai.profil_update');

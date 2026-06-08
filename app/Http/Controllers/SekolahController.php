@@ -104,11 +104,12 @@ class SekolahController extends Controller
     /**
      * Daftar user masyarakat yang tersedia sebagai calon admin sekolah.
      *
-     *  Syarat:
+     * Syarat:
      *  - role = 'masyarakat'
      *  - kolom sekolah IS NULL  (belum jadi admin/siswa sekolah manapun)
      *  - id tidak ada di tabel sekolah (kecuali sekolah yang sedang diedit)
      *  - jika $nagariId diisi → filter sesuai nagari masyarakat
+     *  - jika $nagariId = null → tampilkan SEMUA masyarakat (untuk superadmin)
      */
     private function getUserKepalaSekolahOptions(?int $nagariId, ?int $excludeSekolahId = null)
     {
@@ -122,6 +123,8 @@ class SekolahController extends Controller
             ->whereNull('sekolah')                    // belum berstatus admin/siswa sekolah
             ->whereNotIn('id', $usedUserIds)
             ->when($nagariId, function ($q) use ($nagariId) {
+                // Filter nagari hanya jika $nagariId tidak null
+                // (null = superadmin → tampilkan semua nagari)
                 $q->whereHas('masyarakat', fn($q2) => $q2->where('id_nagari', $nagariId));
             })
             ->with('masyarakat')
@@ -224,11 +227,18 @@ class SekolahController extends Controller
         // Nagari terkunci untuk pegawai nagari
         $nagariTerpilih = $nagariId ? Nagari::find($nagariId) : null;
 
-        // Superadmin: kosong dulu, muat via AJAX setelah nagari dipilih
-        // Pegawai nagari: langsung muat sesuai nagarinya
-        $userMasyarakat = $bisaPilihNagari
-            ? collect()
-            : $this->getUserKepalaSekolahOptions($nagariId);
+        /**
+         * PERBAIKAN: Semua role kini muat masyarakat langsung dari server
+         * (tidak lagi pakai AJAX yang bergantung pada pilihan nagari).
+         *
+         *  - Superadmin (camat/staf camat/pegawai kecamatan):
+         *      $nagariId = null → getUserKepalaSekolahOptions(null)
+         *      → semua masyarakat tanpa batasan nagari ✓
+         *
+         *  - Pegawai nagari:
+         *      $nagariId = <id> → hanya masyarakat di nagarinya ✓
+         */
+        $userMasyarakat = $this->getUserKepalaSekolahOptions($nagariId);
 
         return view('pages.sekolah.create', compact(
             'nagaris',
@@ -331,7 +341,21 @@ class SekolahController extends Controller
     {
         $this->authorizeNagari($sekolah);
 
-        $sekolah->load(['nagari', 'user.masyarakat', 'siswa', 'siswaAktif', 'siswaPending', 'mading']);
+        /**
+         * PERBAIKAN: siswa di-load dengan user.masyarakat agar accessor
+         * nama_siswa, nik, foto_profil_url tersedia tanpa N+1.
+         *
+         * siswaAktif & siswaPending kini menggunakan whereHas('user', ...)
+         * sehingga tidak lagi error "Unknown column 'status_verifikasi'".
+         */
+        $sekolah->load([
+            'nagari',
+            'user.masyarakat',
+            'siswa.user.masyarakat',   // eager-load chain masyarakat untuk data siswa
+            'siswaAktif',
+            'siswaPending',
+            'mading',
+        ]);
 
         $roleLabel = Auth::user()->getRoleLabel();
 
@@ -360,32 +384,35 @@ class SekolahController extends Controller
 
         // Nagari yang ditampilkan sebagai "terkunci" di form:
         //  - Pegawai nagari  → nagari mereka
-        //  - Admin sekolah   → nagari dari record sekolah yang diedit (karena mereka tidak
-        //                      bisa mengubah nagari; kita tampilkan nagari sekolah bukan nagari user)
+        //  - Admin sekolah   → nagari dari record sekolah yang diedit
         $nagariTerpilih = match (true) {
-            $isAdmin                      => $sekolah->nagari ?? Nagari::find($sekolah->id_nagari),
-            $nagariId !== null             => Nagari::find($nagariId),
-            default                        => null,
+            $isAdmin       => $sekolah->nagari ?? Nagari::find($sekolah->id_nagari),
+            $nagariId !== null => Nagari::find($nagariId),
+            default        => null,
         };
 
-        $userMasyarakat = collect();
+        /**
+         * PERBAIKAN: Semua role kini muat daftar masyarakat dari server.
+         *
+         * Aturan filter nagari:
+         *  - Admin sekolah  → nagari dari masyarakat si admin
+         *                     (hanya boleh pilih pengganti dari nagarinya sendiri)
+         *  - Pegawai nagari → nagari mereka
+         *  - Superadmin     → null (tampilkan SEMUA masyarakat, tanpa batasan nagari)
+         */
+        $nagariFilter = match (true) {
+            $isAdmin           => $user->masyarakat?->id_nagari,
+            !$bisaPilihNagari  => $nagariId,
+            default            => null,     // superadmin → semua masyarakat
+        };
 
-        if (!$bisaPilihNagari) {
-            // Tentukan nagari untuk filter calon admin:
-            //  - Admin sekolah  → nagari dari data masyarakat si admin
-            //                     (ia hanya boleh pilih pengganti dari nagarinya sendiri)
-            //  - Pegawai nagari → nagari mereka
-            $nagariFilter = $isAdmin
-                ? ($user->masyarakat?->id_nagari)
-                : $nagariId;
+        $userMasyarakat = $this->getUserKepalaSekolahOptions($nagariFilter, $sekolah->id_sekolah);
 
-            $userMasyarakat = $this->getUserKepalaSekolahOptions($nagariFilter, $sekolah->id_sekolah);
-
-            // Pastikan admin aktif sekolah ini selalu tampil di opsi (ia sudah sekolah='admin')
-            $currentAdmin = User::with('masyarakat')->find($sekolah->id_user);
-            if ($currentAdmin && !$userMasyarakat->contains('id', $currentAdmin->id)) {
-                $userMasyarakat->prepend($currentAdmin);
-            }
+        // Pastikan admin aktif sekolah ini selalu tampil di opsi
+        // (ia sudah sekolah='admin' sehingga tidak ada di opsi biasa)
+        $currentAdmin = User::with('masyarakat')->find($sekolah->id_user);
+        if ($currentAdmin && !$userMasyarakat->contains('id', $currentAdmin->id)) {
+            $userMasyarakat->prepend($currentAdmin);
         }
 
         return view('pages.sekolah.edit', compact(
@@ -416,9 +443,9 @@ class SekolahController extends Controller
         //  - Pegawai nagari  → dikunci ke nagari mereka
         //  - Admin sekolah   → dikunci ke nagari sekolah yang ada (tidak boleh pindah nagari)
         $idNagari = match (true) {
-            $bisaPilihNagari                           => $request->input('id_nagari'),
+            $bisaPilihNagari                               => $request->input('id_nagari'),
             $this->isPegawaiNagari() && $nagariId !== null => $nagariId,
-            default                                    => $sekolah->id_nagari, // admin sekolah & pegawai tanpa nagari
+            default                                        => $sekolah->id_nagari,
         };
 
         $request->validate([
@@ -576,13 +603,14 @@ class SekolahController extends Controller
 
     // ─────────────────────────────────────────────
     // AJAX: Muat user masyarakat berdasarkan nagari
-    // Dipanggil dari form create/edit oleh superadmin
+    // Endpoint ini masih tersedia sebagai fallback / optional filter.
+    // Sejak refactor, pilihan masyarakat dimuat server-side di create/edit.
     // ─────────────────────────────────────────────
 
     public function getUserByNagari(Request $request)
     {
         $user      = Auth::user();
-        $idNagari  = $request->get('id_nagari');
+        $idNagari  = $request->get('id_nagari') ?: null;   // kosong → null
         $idSekolah = $request->get('id_sekolah');
 
         // Admin sekolah: paksa nagari dari data masyarakat mereka sendiri
@@ -593,7 +621,7 @@ class SekolahController extends Controller
         elseif ($this->isPegawaiNagari()) {
             $idNagari = $this->getNagariUser();
         }
-        // Superadmin: gunakan nagari dari request (sudah di-set dari parameter URL)
+        // Superadmin: $idNagari dari request, null = tampilkan semua nagari
 
         // id_user yang sudah jadi admin sekolah LAIN (mode edit: abaikan sekolah saat ini)
         $usedUserIds = Sekolah::when(
@@ -606,6 +634,7 @@ class SekolahController extends Controller
             ->whereNull('sekolah')
             ->whereNotIn('id', $usedUserIds)
             ->when($idNagari, function ($q) use ($idNagari) {
+                // null → tidak difilter (superadmin tanpa pilihan nagari)
                 $q->whereHas('masyarakat', fn($q2) => $q2->where('id_nagari', $idNagari));
             })
             ->with('masyarakat')
