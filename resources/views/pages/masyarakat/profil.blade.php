@@ -353,7 +353,7 @@
 
                             <div class="row g-3 mt-1">
                                 <div class="col-md-6">
-                                    <label>Nomor HP <span class="required-mark">*</span></label>
+                                    <label>Nomor HP </label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="fas fa-phone"></i></span>
                                         <input type="text" name="no_hp" class="form-control @error('no_hp') is-invalid @enderror"
@@ -396,7 +396,7 @@
                             </div>
 
                             <div class="mt-3">
-                                <label>Alamat Lengkap <span class="required-mark">*</span></label>
+                                <label>Alamat Lengkap </label>
                                 <textarea name="alamat" rows="3"
                                           class="form-control @error('alamat') is-invalid @enderror"
                                           placeholder="Alamat lengkap sesuai domisili…">{{ old('alamat', $profil->alamat) }}</textarea>

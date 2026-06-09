@@ -238,7 +238,7 @@ class PegawaiController extends Controller
             ]);
 
             // 2. Upload foto
-            $fotoPath = 'pegawai/default.jpg';
+            $fotoPath = null;
             if ($request->hasFile('foto_profil')) {
                 $fotoPath = $request->file('foto_profil')->store('pegawai', 'public');
             }
@@ -415,7 +415,7 @@ class PegawaiController extends Controller
 
             // Upload foto baru jika ada
             if ($request->hasFile('foto_profil')) {
-                if ($pegawai->foto_profil && $pegawai->foto_profil !== 'pegawai/default.jpg') {
+                if ($pegawai->foto_profil) {
                     Storage::disk('public')->delete($pegawai->foto_profil);
                 }
                 $fotoPath = $request->file('foto_profil')->store('pegawai', 'public');
@@ -469,7 +469,7 @@ class PegawaiController extends Controller
         if (!$canDelete) abort(403);
 
         DB::transaction(function () use ($pegawai) {
-            if ($pegawai->foto_profil && $pegawai->foto_profil !== 'pegawai/default.jpg') {
+            if ($pegawai->foto_profil) {
                 Storage::disk('public')->delete($pegawai->foto_profil);
             }
             $pegawai->user->delete(); // cascade ke pegawai via FK

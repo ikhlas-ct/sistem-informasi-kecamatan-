@@ -3,6 +3,9 @@
 @section('title', 'Tambah Sekolah')
 
 @section('styles')
+{{-- Select2 CSS --}}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body, .card, h4, h5, label, .btn { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -58,6 +61,60 @@
     .btn-cancel { border-radius:10px; font-size:.85rem; border:1.5px solid #e2e8f0; color:#64748b; padding:9px 20px; }
     .btn-cancel:hover { background:#f8fafc; }
     .spinner-border-sm { width:1rem; height:1rem; }
+
+    /* ── Select2 Custom Theme ── */
+    .select2-container--default .select2-selection--single {
+        border-radius: 10px;
+        border: 1.5px solid #e2e8f0;
+        font-size: .85rem;
+        padding: 5px 12px;
+        height: 38px;
+        color: #334155;
+        background: #f8fafc;
+        transition: border-color .2s, box-shadow .2s;
+        display: flex;
+        align-items: center;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #334155;
+        line-height: 26px;
+        padding-left: 0;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+        right: 6px;
+    }
+    .select2-container--default.select2-container--open .select2-selection--single,
+    .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: var(--accent);
+        background: #fff;
+        box-shadow: 0 0 0 3px var(--accent-shadow);
+        outline: none;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--accent);
+    }
+    .select2-dropdown {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.08);
+        font-size: .85rem;
+    }
+    .select2-search--dropdown .select2-search__field {
+        border-radius: 7px;
+        border: 1.5px solid #e2e8f0;
+        font-size: .84rem;
+        padding: 6px 10px;
+    }
+    .select2-search--dropdown .select2-search__field:focus {
+        border-color: var(--accent);
+        outline: none;
+    }
+    /* Error state untuk Select2 */
+    .is-invalid + .select2-container--default .select2-selection--single,
+    .select2-container--default.is-invalid .select2-selection--single {
+        border-color: #dc3545 !important;
+    }
 </style>
 @endsection
 
@@ -99,7 +156,6 @@
     <div class="info-box">
         <i class="fas fa-info-circle mt-1"></i>
         <div>
-            {{-- PERBAIKAN: superadmin dapat memilih masyarakat dari nagari mana pun --}}
             <strong>Mode Superadmin:</strong> Anda dapat memilih nagari sekolah secara bebas.
             Daftar administrator tersedia dari <strong>semua nagari</strong> — tidak dibatasi nagari tertentu.
         </div>
@@ -218,7 +274,6 @@
                             <label>Nagari <span class="required-mark">*</span></label>
 
                             @if($bisaPilihNagari)
-                                {{-- Camat / Staf Camat: bebas pilih nagari (tidak lagi mengontrol daftar user) --}}
                                 <select id="id_nagari" name="id_nagari"
                                         class="form-select @error('id_nagari') is-invalid @enderror">
                                     <option value="">-- Pilih Nagari --</option>
@@ -234,37 +289,36 @@
                                 <div class="form-text">Pilih nagari tempat sekolah berada.</div>
 
                             @else
-                                {{-- Kepala Nagari / Staf Nagari: nagari terkunci otomatis --}}
                                 <div class="nagari-locked">
                                     <i class="fas fa-lock"></i>
                                     {{ $nagariTerpilih?->nama_nagari ?? '-' }}
                                     <span style="font-size:.75rem;font-weight:400;color:#64748b;margin-left:4px;">(otomatis sesuai nagari Anda)</span>
                                 </div>
-                                {{-- Hidden field agar id_nagari ikut tersubmit --}}
                                 <input type="hidden" name="id_nagari" value="{{ $nagariTerpilih?->id }}">
                             @endif
                         </div>
 
-                        {{-- ── USER / KEPALA SEKOLAH ── --}}
-                        {{--
-                            PERBAIKAN: Daftar masyarakat kini dimuat langsung dari server untuk semua role.
-                            - Superadmin  : $userMasyarakat berisi semua masyarakat (tanpa filter nagari)
-                            - Pegawai nagari: $userMasyarakat berisi masyarakat di nagarinya saja
-                            AJAX tidak lagi diperlukan.
-                        --}}
+                        {{-- ── USER / KEPALA SEKOLAH (Select2) ── --}}
                         <div class="mb-3">
                             <label for="id_user">Kepala Sekolah / Administrator <span class="required-mark">*</span></label>
+
+                            {{--
+                                Menggunakan Select2 agar bisa di-search ketika data masyarakat banyak.
+                                Daftar dimuat server-side (tidak perlu AJAX).
+                            --}}
                             <select id="id_user" name="id_user"
-                                    class="form-select @error('id_user') is-invalid @enderror">
-                                <option value="">-- Pilih Administrator --</option>
+                                    class="form-select @error('id_user') is-invalid @enderror"
+                                    style="width:100%">
+                                <option value="">-- Cari / Pilih Administrator --</option>
                                 @forelse($userMasyarakat as $u)
-                                    <option value="{{ $u->id }}" {{ old('id_user') == $u->id ? 'selected' : '' }}>
+                                    <option value="{{ $u->id }}" {{ old('id_user') == $u->id ? 'selected' : '' }}
+                                        data-nama="{{ $u->masyarakat?->nama_masyarakat }}"
+                                        data-nagari="{{ $bisaPilihNagari ? ($u->masyarakat?->nagari?->nama_nagari ?? '') : '' }}">
                                         {{ $u->nip_nik }}
                                         @if($u->masyarakat?->nama_masyarakat)
                                             – {{ $u->masyarakat->nama_masyarakat }}
                                         @endif
                                         @if($u->masyarakat?->nagari?->nama_nagari && $bisaPilihNagari)
-                                            {{-- Superadmin: tampilkan asal nagari agar mudah dibedakan --}}
                                             ({{ $u->masyarakat->nagari->nama_nagari }})
                                         @endif
                                     </option>
@@ -272,14 +326,15 @@
                                     <option disabled>Tidak ada masyarakat tersedia</option>
                                 @endforelse
                             </select>
+
                             @error('id_user')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                             <div class="form-text">
                                 @if($bisaPilihNagari)
-                                    Pilih masyarakat yang akan menjadi administrator. Nama nagari asal ditampilkan dalam tanda kurung.
+                                    Ketik NIK atau nama untuk mencari. Nama nagari asal ditampilkan dalam tanda kurung.
                                 @else
-                                    Pilih masyarakat yang akan menjadi kepala sekolah / administrator akun sekolah.
+                                    Ketik NIK atau nama untuk mencari administrator dari nagari Anda.
                                 @endif
                             </div>
                         </div>
@@ -355,7 +410,51 @@
 @endsection
 
 @section('scripts')
+{{-- jQuery (pastikan sudah ada di layout, jika belum uncomment baris ini) --}}
+{{-- <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script> --}}
+
+{{-- Select2 JS --}}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
+// ── Select2: Dropdown Administrator ───────────────
+$(document).ready(function () {
+    $('#id_user').select2({
+        theme: 'default',
+        placeholder: '-- Cari / Pilih Administrator --',
+        allowClear: true,
+        width: '100%',
+        language: {
+            noResults: function () { return 'Tidak ada data yang cocok'; },
+            searching:  function () { return 'Mencari...'; },
+        },
+        // Fungsi matcher: cari by NIK atau nama masyarakat
+        matcher: function (params, data) {
+            if (!params.term || params.term.trim() === '') return data;
+            var term   = params.term.toLowerCase();
+            var text   = (data.text || '').toLowerCase();
+            var nama   = $(data.element).data('nama')   || '';
+            var nagari = $(data.element).data('nagari') || '';
+            if (
+                text.indexOf(term) > -1 ||
+                nama.toLowerCase().indexOf(term) > -1 ||
+                nagari.toLowerCase().indexOf(term) > -1
+            ) {
+                return data;
+            }
+            return null;
+        },
+    });
+
+    // Tampilkan error validation di bawah Select2
+    @error('id_user')
+        $('#id_user').next('.select2-container').find('.select2-selection').css({
+            'border-color': '#dc3545',
+            'box-shadow': '0 0 0 3px rgba(220,53,69,.15)',
+        });
+    @enderror
+});
+
 // ── Logo preview ─────────────────────────────────
 const logoInput   = document.getElementById('logo-input');
 const logoPreview = document.getElementById('logo-preview');
@@ -394,9 +493,5 @@ logoInput.addEventListener('change', function () {
         }
     });
 });
-
-// PERBAIKAN: AJAX user-by-nagari dihapus.
-// Daftar masyarakat kini langsung tersedia dari server untuk semua role.
-// Superadmin dapat memilih dari semua masyarakat tanpa harus pilih nagari dulu.
 </script>
 @endsection

@@ -1,4 +1,3 @@
-<!-- Sidebar -->
 <div class="sidebar-logo">
     <div class="logo-header" data-background-color="dark">
         <a href="index.html" class="logo d-flex align-items-center">
@@ -18,20 +17,17 @@
     <div class="sidebar-content">
         <ul class="nav nav-secondary">
 
-            {{-- ═══════════════════════════════════════════════════
-                 CAMAT
-            ═══════════════════════════════════════════════════ --}}
             @can('isCamat', Auth::user())
 
                 <li class="nav-item">
                     <a href="{{ route('camat.dashboard') }}">
-                        <i class="fas fa-home"></i><p>Dashboard</p>
+                        <i class="fas fa-tachometer-alt"></i><p>Dashboard</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="{{ route('pegawai.profil') }}">
-                        <i class="fas fa-user"></i><p>Profile</p>
+                        <i class="fas fa-id-card"></i><p>Profile</p>
                     </a>
                 </li>
 
@@ -42,33 +38,33 @@
 
                 <li class="nav-item">
                     <a href="{{ route('kecamatan.setting.edit') }}">
-                        <i class="fas fa-cogs"></i><p>Website Setting</p>
+                        <i class="fas fa-sliders-h"></i><p>Website Setting</p>
                     </a>
                     <a href="{{ route('camat.settings.heroslide') }}">
-                        <i class="fas fa-cogs"></i><p>Hero Slide</p>
+                        <i class="fas fa-images"></i><p>Hero Slide</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="{{ route('camat.nagari.index') }}">
-                        <i class="fas fa-home"></i><p>Nagari</p>
+                        <i class="fas fa-map-marker-alt"></i><p>Nagari</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#masyarakat">
-                        <i class="fas fa-newspaper"></i><p>Kependudukan</p><span class="caret"></span>
+                        <i class="fas fa-users"></i><p>Kependudukan</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="masyarakat">
                         <ul class="nav nav-collapse">
-                            <li><a href="{{ route('camat.masyarakat.index') }}"><i class="fas fa-cog"></i><p>Penduduk</p></a></li>
+                            <li><a href="{{ route('camat.masyarakat.index') }}"><i class="fas fa-address-book"></i><p>Penduduk</p></a></li>
                         </ul>
                     </div>
                 </li>
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#konten">
-                        <i class="fas fa-newspaper"></i>
+                        <i class="fas fa-file-alt"></i>
                         <p>Konten</p>
                         @if (!empty($pendingKontenCombined))
                             <span class="badge badge-secondary">{{ $pendingKontenCombined }}</span>
@@ -100,7 +96,7 @@
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#sekolahMenu">
-                        <i class="fas fa-school"></i><p>Sekolah</p><span class="caret"></span>
+                        <i class="fas fa-graduation-cap"></i><p>Sekolah</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="sekolahMenu">
                         <ul class="nav nav-collapse">
@@ -112,7 +108,7 @@
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#Potensi">
-                        <i class="fas fa-chart-area"></i>
+                        <i class="fas fa-map"></i>
                         <p>Potensi Daerah</p>
                         @if (!empty($pendingPotensi))
                             <span class="badge badge-secondary">{{ $pendingPotensi }}</span>
@@ -132,25 +128,6 @@
                     </div>
                 </li>
 
-                {{-- <li class="nav-item">
-                    <a data-bs-toggle="collapse" href="#surat">
-                        <i class="fas fa-th-list"></i><p>Surat</p><span class="caret"></span>
-                    </a>
-                    <div class="collapse" id="surat">
-                        <ul class="nav nav-collapse">
-                            <li>
-                                <a href="{{ route('camat.surat_keterangan_miskin') }}">
-                                    <span class="sub-item">Surat Keterangan Tidak Mampu</span>
-                                    @if (isset($pendingSurat) && $pendingSurat > 0)
-                                        <span class="badge badge-secondary">{{ $pendingSurat }}</span>
-                                    @endif
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li> --}}
-
-                {{-- ── DOKUMEN BERSAMA (Camat) ── --}}
                 <li class="nav-section">
                     <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                     <h4 class="text-section">Dokumen</h4>
@@ -195,7 +172,7 @@
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('balasanpengaduan.index') }}">
-                        <i class="fas fa-cog"></i>
+                        <i class="fas fa-exclamation-circle"></i>
                         <p>Pengaduan</p>
                         @if (isset($pendingPengaduan) && $pendingPengaduan > 0)
                             <span class="badge badge-secondary">{{ $pendingPengaduan }}</span>
@@ -209,33 +186,29 @@
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('pegawai.index') }}">
-                        <i class="fas fa-cog"></i><p>Pegawai</p>
+                        <i class="fas fa-user-tie"></i><p>Pegawai</p>
                     </a>
                 </li>
 
             @endcan
 
-            {{-- ═══════════════════════════════════════════════════
-                 MASYARAKAT BIASA
-                 (role=masyarakat, kolom sekolah = null)
-            ═══════════════════════════════════════════════════ --}}
             @if(Auth::user()->isMasyarakatBiasa())
 
                 <li class="nav-item">
                     <a href="{{ route('dashboard.masyarakat') }}">
-                        <i class="fas fa-home"></i><p>Dashboard</p>
+                        <i class="fas fa-tachometer-alt"></i><p>Dashboard</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="{{ route('masyarakat.profil') }}">
-                        <i class="fas fa-user"></i><p>Profil</p>
+                        <i class="fas fa-id-card"></i><p>Profil</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#konten">
-                        <i class="fas fa-newspaper"></i><p>Konten</p><span class="caret"></span>
+                        <i class="fas fa-file-alt"></i><p>Konten</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="konten">
                         <ul class="nav nav-collapse">
@@ -247,7 +220,7 @@
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#Potensi">
-                        <i class="fas fa-chart-area"></i><p>Potensi Daerah</p><span class="caret"></span>
+                        <i class="fas fa-map"></i><p>Potensi Daerah</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="Potensi">
                         <ul class="nav nav-collapse">
@@ -261,22 +234,7 @@
                         </ul>
                     </div>
                 </li>
-{{--
-                @can('canRequestSuratKeteranganMiskin', auth()->user())
-                    <li class="nav-item">
-                        <a data-bs-toggle="collapse" href="#surat">
-                            <i class="fas fa-envelope"></i><p>Surat</p><span class="caret"></span>
-                        </a>
-                        <div class="collapse" id="surat">
-                            <ul class="nav nav-collapse">
-                                <li><a href="{{ route('masyarakat.surat_keterangan_miskin') }}"><span class="sub-item">Surat Keterangan Tidak Mampu</span></a></li>
-                                <li><a href=""><span class="sub-item">Arsip Surat</span></a></li>
-                            </ul>
-                        </div>
-                    </li>
-                @endcan --}}
 
-                {{-- ── DOKUMEN BERSAMA (Masyarakat) ── --}}
                 <li class="nav-item {{ request()->routeIs('dokumen.*') ? 'active' : '' }}">
                     <a data-bs-toggle="collapse" href="#dokumenBersama">
                         <i class="fas fa-folder-open"></i>
@@ -313,32 +271,29 @@
 
                 <li class="nav-item">
                     <a href="{{ route('pengaduan.index') }}">
-                        <i class="fas fa-comments"></i><p>Pengaduan</p>
+                        <i class="fas fa-comment-dots"></i><p>Pengaduan</p>
                     </a>
                 </li>
 
             @endif
 
-            {{-- ═══════════════════════════════════════════════════
-                 PEGAWAI
-            ═══════════════════════════════════════════════════ --}}
             @can('isPegawai', Auth::user())
 
                 <li class="nav-item">
                     <a href="{{ route('camat.dashboard') }}">
-                        <i class="fas fa-home"></i><p>Dashboard</p>
+                        <i class="fas fa-tachometer-alt"></i><p>Dashboard</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="{{ route('pegawai.profil') }}">
-                        <i class="fas fa-user"></i><p>Profile</p>
+                        <i class="fas fa-id-card"></i><p>Profile</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#konten">
-                        <i class="fas fa-newspaper"></i><p>Konten</p><span class="caret"></span>
+                        <i class="fas fa-file-alt"></i><p>Konten</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="konten">
                         <ul class="nav nav-collapse">
@@ -361,52 +316,10 @@
                         </ul>
                     </div>
                 </li>
-{{--
-                @can('canAccessSuratKeteranganMiskinPegawaiNagari', auth()->user())
-                    <li class="nav-item">
-                        <a data-bs-toggle="collapse" href="#surat">
-                            <i class="fas fa-envelope"></i><p>Surat</p><span class="caret"></span>
-                        </a>
-                        <div class="collapse" id="surat">
-                            <ul class="nav nav-collapse">
-                                <li>
-                                    <a href="{{ route('pegawai.surat_keterangan_miskin') }}">
-                                        <span class="sub-item">Surat Keterangan Tidak Mampu</span>
-                                        @if (isset($pendingSurat) && $pendingSurat > 0)
-                                            <span class="badge badge-secondary">{{ $pendingSurat }}</span>
-                                        @endif
-                                    </a>
-                                </li>
-                                <li><a href=""><span class="sub-item">Arsip Surat</span></a></li>
-                            </ul>
-                        </div>
-                    </li>
-                @endcan --}}
-
-                {{-- @can('canAccessSuratKeteranganMiskinKepalaNagari', auth()->user())
-                    <li class="nav-item">
-                        <a data-bs-toggle="collapse" href="#surat">
-                            <i class="fas fa-th-list"></i><p>Surat</p><span class="caret"></span>
-                        </a>
-                        <div class="collapse" id="surat">
-                            <ul class="nav nav-collapse">
-                                <li>
-                                    <a href="{{ route('nagari.surat_keterangan_miskin') }}">
-                                        <span class="sub-item">Surat Keterangan Tidak Mampu</span>
-                                        @if (isset($pendingSurat) && $pendingSurat > 0)
-                                            <span class="badge badge-secondary">{{ $pendingSurat }}</span>
-                                        @endif
-                                    </a>
-                                </li>
-                                <li><a href="{{ route('nagari.surat_keterangan_miskin_arsip') }}"><span class="sub-item">Arsip Surat</span></a></li>
-                            </ul>
-                        </div>
-                    </li>
-                @endcan --}}
 
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#Potensi">
-                        <i class="fas fa-chart-area"></i><p>Potensi Daerah</p><span class="caret"></span>
+                        <i class="fas fa-map"></i><p>Potensi Daerah</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="Potensi">
                         <ul class="nav nav-collapse">
@@ -421,11 +334,9 @@
                     </div>
                 </li>
 
-
-                {{-- ── SEKOLAH (Pegawai nagari & staf kecamatan) ── --}}
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#sekolahMenu">
-                        <i class="fas fa-school"></i><p>Sekolah</p><span class="caret"></span>
+                        <i class="fas fa-graduation-cap"></i><p>Sekolah</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="sekolahMenu">
                         <ul class="nav nav-collapse">
@@ -481,37 +392,29 @@
 
             @endcan
 
-            {{-- ═══════════════════════════════════════════════════
-                 ADMIN SEKOLAH
-                 (role=masyarakat, kolom sekolah='admin')
-                 Struktur: fitur sekolah di atas, fitur masyarakat di bawah
-            ═══════════════════════════════════════════════════ --}}
             @can('isAdminSekolah', Auth::user())
             @php $belumBacaSek = \App\Models\DokumenPenerima::where('id_user', auth()->id())->where('sudah_dibaca', false)->count(); @endphp
 
-                {{-- ── Navigasi Utama ── --}}
                 <li class="nav-item">
                     <a href="{{ route('sekolah.dashboard') }}">
-                        <i class="fas fa-home"></i><p>Dashboard</p>
+                        <i class="fas fa-tachometer-alt"></i><p>Dashboard</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="{{ route('masyarakat.profil') }}">
-                        <i class="fas fa-user"></i><p>Profil</p>
+                        <i class="fas fa-id-card"></i><p>Profil</p>
                     </a>
                 </li>
 
-                {{-- ══ KELOLA SEKOLAH ══ --}}
                 <li class="nav-section">
                     <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                     <h4 class="text-section">Kelola Sekolah</h4>
                 </li>
 
-                {{-- Data Sekolah --}}
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#sekolahMenu">
-                        <i class="fas fa-school"></i><p>Data Sekolah</p><span class="caret"></span>
+                        <i class="fas fa-graduation-cap"></i><p>Data Sekolah</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="sekolahMenu">
                         <ul class="nav nav-collapse">
@@ -528,10 +431,9 @@
                     </div>
                 </li>
 
-                {{-- Mading --}}
                 <li class="nav-item {{ request()->routeIs('mading.*') ? 'active' : '' }}">
                     <a data-bs-toggle="collapse" href="#madingMenu">
-                        <i class="fas fa-chalkboard"></i>
+                        <i class="fas fa-bullhorn"></i>
                         <p>Mading</p>
                         @if (!empty($stats['pending']))
                             <span class="badge badge-secondary">{{ $stats['pending'] }}</span>
@@ -546,7 +448,6 @@
                     </div>
                 </li>
 
-                {{-- Dokumen Bersama (Sekolah) --}}
                 <li class="nav-item {{ request()->routeIs('dokumen.*') ? 'active' : '' }}">
                     <a data-bs-toggle="collapse" href="#dokumenBersama">
                         <i class="fas fa-folder-open"></i>
@@ -580,16 +481,14 @@
                     </div>
                 </li>
 
-                {{-- ══ LAYANAN MASYARAKAT ══ --}}
                 <li class="nav-section">
                     <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                     <h4 class="text-section">Layanan Masyarakat</h4>
                 </li>
 
-                {{-- Konten --}}
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#konten">
-                        <i class="fas fa-newspaper"></i><p>Konten</p><span class="caret"></span>
+                        <i class="fas fa-file-alt"></i><p>Konten</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="konten">
                         <ul class="nav nav-collapse">
@@ -599,10 +498,9 @@
                     </div>
                 </li>
 
-                {{-- Potensi Daerah --}}
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#PotensiSek">
-                        <i class="fas fa-chart-area"></i><p>Potensi Daerah</p><span class="caret"></span>
+                        <i class="fas fa-map"></i><p>Potensi Daerah</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="PotensiSek">
                         <ul class="nav nav-collapse">
@@ -617,50 +515,28 @@
                     </div>
                 </li>
 
-                {{-- Surat (hanya jika berhak) --}}
-                {{-- @can('canRequestSuratKeteranganMiskin', auth()->user())
-                <li class="nav-item">
-                    <a data-bs-toggle="collapse" href="#suratSek">
-                        <i class="fas fa-envelope"></i><p>Surat</p><span class="caret"></span>
-                    </a>
-                    <div class="collapse" id="suratSek">
-                        <ul class="nav nav-collapse">
-                            <li><a href="{{ route('masyarakat.surat_keterangan_miskin') }}"><span class="sub-item">Surat Ket. Tidak Mampu</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                @endcan --}}
-
-                {{-- Pengaduan --}}
                 <li class="nav-item">
                     <a href="{{ route('pengaduan.index') }}">
-                        <i class="fas fa-comments"></i><p>Pengaduan</p>
+                        <i class="fas fa-comment-dots"></i><p>Pengaduan</p>
                     </a>
                 </li>
 
             @endcan
 
-            {{-- ═══════════════════════════════════════════════════
-                 SISWA SEKOLAH
-                 (role=masyarakat, kolom sekolah='siswa')
-                 Struktur: fitur mading di atas, fitur masyarakat di bawah
-            ═══════════════════════════════════════════════════ --}}
             @can('isSiswaSekolah', Auth::user())
 
-                {{-- ── Navigasi Utama ── --}}
                 <li class="nav-item">
                     <a href="{{ route('dashboard.masyarakat') }}">
-                        <i class="fas fa-home"></i><p>Dashboard</p>
+                        <i class="fas fa-tachometer-alt"></i><p>Dashboard</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
                     <a href="{{ route('masyarakat.profil') }}">
-                        <i class="fas fa-user"></i><p>Profil</p>
+                        <i class="fas fa-id-card"></i><p>Profil</p>
                     </a>
                 </li>
 
-                {{-- ══ MADING ══ --}}
                 <li class="nav-section">
                     <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                     <h4 class="text-section">Mading</h4>
@@ -668,7 +544,7 @@
 
                 <li class="nav-item {{ request()->routeIs('mading.*') ? 'active' : '' }}">
                     <a data-bs-toggle="collapse" href="#madingMenu">
-                        <i class="fas fa-chalkboard"></i><p>Mading</p><span class="caret"></span>
+                        <i class="fas fa-bullhorn"></i><p>Mading</p><span class="caret"></span>
                     </a>
                     <div class="collapse {{ request()->routeIs('mading.*') ? 'show' : '' }}" id="madingMenu">
                         <ul class="nav nav-collapse">
@@ -678,16 +554,14 @@
                     </div>
                 </li>
 
-                {{-- ══ LAYANAN MASYARAKAT ══ --}}
                 <li class="nav-section">
                     <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                     <h4 class="text-section">Layanan Masyarakat</h4>
                 </li>
 
-                {{-- Konten --}}
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#konten">
-                        <i class="fas fa-newspaper"></i><p>Konten</p><span class="caret"></span>
+                        <i class="fas fa-file-alt"></i><p>Konten</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="konten">
                         <ul class="nav nav-collapse">
@@ -697,10 +571,9 @@
                     </div>
                 </li>
 
-                {{-- Potensi Daerah --}}
                 <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#PotensiSiswa">
-                        <i class="fas fa-chart-area"></i><p>Potensi Daerah</p><span class="caret"></span>
+                        <i class="fas fa-map"></i><p>Potensi Daerah</p><span class="caret"></span>
                     </a>
                     <div class="collapse" id="PotensiSiswa">
                         <ul class="nav nav-collapse">
@@ -715,30 +588,14 @@
                     </div>
                 </li>
 
-                {{-- Surat (hanya jika berhak) --}}
-                {{-- @can('canRequestSuratKeteranganMiskin', auth()->user())
-                <li class="nav-item">
-                    <a data-bs-toggle="collapse" href="#suratSiswa">
-                        <i class="fas fa-envelope"></i><p>Surat</p><span class="caret"></span>
-                    </a>
-                    <div class="collapse" id="suratSiswa">
-                        <ul class="nav nav-collapse">
-                            <li><a href="{{ route('masyarakat.surat_keterangan_miskin') }}"><span class="sub-item">Surat Ket. Tidak Mampu</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                @endcan --}}
-
-                {{-- Pengaduan --}}
                 <li class="nav-item">
                     <a href="{{ route('pengaduan.index') }}">
-                        <i class="fas fa-comments"></i><p>Pengaduan</p>
+                        <i class="fas fa-comment-dots"></i><p>Pengaduan</p>
                     </a>
                 </li>
 
             @endcan
 
-            {{-- ── LOGOUT (semua role) ── --}}
             <li class="nav-item">
                 <a href="{{ route('logout') }}"
                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
