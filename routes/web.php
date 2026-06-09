@@ -166,13 +166,37 @@ Route::middleware(['auth', 'role:pegawai,camat'])->group(function () {
     Route::post('/balasan-pengaduan/{id_pengaduan}', [BalasanpengaduanController::class, 'store'])->name('balasanpengaduan.store');
     Route::get('/balasan-pengaduan/{id}/edit', [BalasanpengaduanController::class, 'edit'])->name('balasanpengaduan.edit');
     Route::put('/balasan-pengaduan/{id}', [BalasanpengaduanController::class, 'update'])->name('balasanpengaduan.update');
+    Route::prefix('pengaturan/masyarakat')->name('camat.masyarakat.')->group(function () {
 
-    Route::get('pengaturan/masyarakat', [PengaturanmasyarakatController::class, 'index'])->name('camat.masyarakat.index');
-    Route::post('pengaturan/masyarakat/store', [PengaturanmasyarakatController::class, 'store'])->name('camat.masyarakat.store');
-    Route::get('pengaturan/masyarakat/show/{masyarakat}', [PengaturanmasyarakatController::class, 'show'])->name('camat.masyarakat.show');
-    Route::patch('pengaturan/masyarakat/{masyarakat}/password', [PengaturanmasyarakatController::class, 'updatePassword'])->name('camat.masyarakat.updatePassword');
-    Route::patch('pengaturan/masyarakat/{masyarakat}/toggle-status', [PengaturanmasyarakatController::class, 'toggleStatus'])->name('camat.masyarakat.toggleStatus');
-    Route::put('/pengaturan/masyarakat/{id}', [MasyarakatController::class, 'update'])->name('camat.masyarakat.update');
+        // Index — semua role boleh akses (scope data sudah dibatasi di controller)
+        Route::get('/',                              [PengaturanmasyarakatController::class, 'index'])
+            ->name('index');
+
+        // Create & Store — semua role boleh tambah (nagari dikunci di controller jika nagari role)
+        Route::get('/create',                        [PengaturanmasyarakatController::class, 'create'])
+            ->name('create');
+        Route::post('/',                             [PengaturanmasyarakatController::class, 'store'])
+            ->name('store');
+
+        // Show — sesuai scope
+        Route::get('/{masyarakat}',                  [PengaturanmasyarakatController::class, 'show'])
+            ->name('show');
+
+        // Edit & Update — scope dibatasi di controller
+        Route::get('/{masyarakat}/edit',             [PengaturanmasyarakatController::class, 'edit'])
+            ->name('edit');
+        Route::put('/{masyarakat}',                  [PengaturanmasyarakatController::class, 'update'])
+            ->name('update');
+
+        // Aksi tambahan
+        Route::patch('/{masyarakat}/password',       [PengaturanmasyarakatController::class, 'updatePassword'])
+            ->name('updatePassword');
+        Route::patch('/{masyarakat}/toggle-status',  [PengaturanmasyarakatController::class, 'toggleStatus'])
+            ->name('toggleStatus');
+    });
+
+
+
 
     Route::get('profil', [ProfilpegawaiController::class, 'profil'])->name('pegawai.profil');
     Route::put('profil', [ProfilpegawaiController::class, 'profil_update'])->name('pegawai.profil_update');
