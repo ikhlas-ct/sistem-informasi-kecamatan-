@@ -3,8 +3,11 @@
 @section('title', 'Mading Sekolah')
 
 @php
-    $isSekolah = Auth::user()->role === 'sekolah';
-    $isSiswa   = Auth::user()->role === 'siswa';
+    // Gunakan helper dari User model — bukan raw role string
+    // Admin sekolah: role='masyarakat' + sekolah='admin'
+    // Siswa sekolah: role='masyarakat' + sekolah='siswa'
+    $isSekolah = Auth::user()->isAdminSekolah();
+    $isSiswa   = Auth::user()->isSiswaSekolah();
 
     $jenisOptions = [
         'karya'       => ['label' => 'Karya Siswa',  'icon' => 'paint-brush',  'color' => '#ec4899', 'light' => '#fce7f3'],
@@ -85,6 +88,9 @@
     .btn-hapus   { background:#fee2e2; color:#dc2626; } .btn-hapus:hover   { background:#dc2626; color:#fff; }
     .btn-approve { background:#dcfce7; color:#16a34a; } .btn-approve:hover { background:#16a34a; color:#fff; }
     .btn-reject  { background:#fee2e2; color:#dc2626; } .btn-reject:hover  { background:#dc2626; color:#fff; }
+    .btn-show       { background:#e0f2fe; color:#0369a1; } .btn-show:hover       { background:#0369a1; color:#fff; }
+    .btn-toggle-on  { background:#f1f5f9; color:#64748b; } .btn-toggle-on:hover  { background:#16a34a; color:#fff; }
+    .btn-toggle-off { background:#dcfce7; color:#16a34a; } .btn-toggle-off:hover { background:#dc2626; color:#fff; }
 
     /* ── Btn Primary ── */
     .btn-primary { background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 80%,black)); border:none; border-radius:10px; font-weight:600; font-size:.83rem; padding:8px 18px; transition:all .2s; }
@@ -301,7 +307,10 @@
                                 </div>
                                 <div style="font-size:.73rem;color:#94a3b8;margin-top:2px;">
                                     <i class="fas fa-user me-1"></i>
-                                    {{ $item->user?->siswa?->nama_siswa ?? $item->user?->sekolah?->nama_sekolah ?? '-' }}
+                                    {{ $item->user?->masyarakat?->nama_masyarakat
+                                        ?? $item->user?->dataSekolah?->nama_sekolah
+                                        ?? $item->user?->nip_nik
+                                        ?? '-' }}
                                     @if($item->id_user === auth()->id())
                                         <span class="badge ms-1" style="background:#e0f2fe;color:#0369a1;font-size:.65rem;">Saya</span>
                                     @endif
@@ -342,7 +351,13 @@
                             {{-- Aksi --}}
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
-                                    {{-- Approve & Reject: hanya sekolah, hanya mading pending --}}
+                                    {{-- Lihat detail: semua role --}}
+                                    <a href="{{ route('mading.show', $item->id_mading) }}"
+                                        class="btn btn-action btn-show" title="Lihat Detail">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+
+                                    {{-- Approve & Reject: hanya admin sekolah, hanya mading pending --}}
                                     @if($isSekolah && $item->approval_status === 'pending')
                                         <form action="{{ route('mading.approve', $item->id_mading) }}" method="POST" class="d-inline">
                                             @csrf
@@ -356,7 +371,23 @@
                                         </button>
                                     @endif
 
-                                    {{-- Edit --}}
+                                    {{-- Toggle publish/draft: hanya admin sekolah, hanya mading approved --}}
+                                    @if($isSekolah && $item->approval_status === 'approved')
+                                        <form action="{{ route('mading.toggle', $item->id_mading) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @if($item->status === 'publish')
+                                                <button type="submit" class="btn btn-action btn-toggle-off" title="Nonaktifkan (jadikan draft)">
+                                                    <i class="fas fa-toggle-on"></i>
+                                                </button>
+                                            @else
+                                                <button type="submit" class="btn btn-action btn-toggle-on" title="Aktifkan (publish)">
+                                                    <i class="fas fa-toggle-off"></i>
+                                                </button>
+                                            @endif
+                                        </form>
+                                    @endif
+
+                                    {{-- Edit & Hapus: admin sekolah atau pemilik mading --}}
                                     @if($isSekolah || $item->id_user === auth()->id())
                                         <a href="{{ route('mading.edit', $item->id_mading) }}"
                                             class="btn btn-action btn-edit" title="Edit">

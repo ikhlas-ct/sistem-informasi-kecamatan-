@@ -137,7 +137,7 @@ class User extends Authenticatable
         if ($this->role === 'pegawai') {
             $pegawai = $this->pegawai;
             if (! $pegawai || is_null($pegawai->id_nagari)) return 'staf_camat';
-            return $pegawai->jabatan_nagari === 'kepala_nagari' ? 'wali_nagari' : 'staf_nagari';
+            return $pegawai->jabatan_nagari === 'kepala_nagari' ? 'wali_nagari' : 'pegawai_nagari';
         }
         if ($this->role === 'sekolah') return 'sekolah';
         if ($this->role === 'siswa')   return 'siswa';

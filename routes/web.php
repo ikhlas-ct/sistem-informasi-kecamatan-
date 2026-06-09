@@ -233,15 +233,18 @@ Route::prefix('sekolah')->middleware(['auth', 'role:admin_sekolah,siswa_sekolah,
     Route::post('/delete-image', [MadingController::class, 'deleteImage'])->name('mading.delete.image');
 
     // ── Mading (admin_sekolah + siswa_sekolah; controller cek akses internal) ──
-    Route::get('/mading',                      [MadingController::class, 'index'])->name('mading.index');
-    Route::get('/mading/tambah',               [MadingController::class, 'create'])->name('mading.create');
-    Route::post('/mading/tambah',              [MadingController::class, 'store'])->name('mading.store');
-    Route::get('/mading/{id_mading}/edit',     [MadingController::class, 'edit'])->name('mading.edit');
-    Route::put('/mading/{id_mading}/edit',     [MadingController::class, 'update'])->name('mading.update');
-    Route::delete('/mading/{id_mading}',       [MadingController::class, 'destroy'])->name('mading.destroy');
-    Route::post('/mading/{id_mading}/approve', [MadingController::class, 'approve'])->name('mading.approve');
-    Route::post('/mading/{id_mading}/reject',  [MadingController::class, 'reject'])->name('mading.reject');
-    Route::delete('/mading/lampiran/{id}',     [MadingController::class, 'destroyLampiran'])->name('mading.lampiran.destroy');
+    Route::get('/mading',                           [MadingController::class, 'index'])->name('mading.index');
+    Route::get('/mading/tambah',                    [MadingController::class, 'create'])->name('mading.create');
+    Route::post('/mading/tambah',                   [MadingController::class, 'store'])->name('mading.store');
+    Route::delete('/mading/lampiran/{id}',          [MadingController::class, 'destroyLampiran'])->name('mading.lampiran.destroy');
+    Route::get('/mading/{id_mading}/edit',          [MadingController::class, 'edit'])->name('mading.edit');
+    Route::put('/mading/{id_mading}/edit',          [MadingController::class, 'update'])->name('mading.update');
+    Route::delete('/mading/{id_mading}',            [MadingController::class, 'destroy'])->name('mading.destroy');
+    Route::post('/mading/{id_mading}/approve',      [MadingController::class, 'approve'])->name('mading.approve');
+    Route::post('/mading/{id_mading}/reject',       [MadingController::class, 'reject'])->name('mading.reject');
+    Route::post('/mading/{id_mading}/toggle',       [MadingController::class, 'toggle'])->name('mading.toggle');
+    // show → redirect ke halaman publik berdasarkan slug
+    Route::get('/mading/{id_mading}',               [MadingController::class, 'show'])->name('mading.show');
 
     // ── Manajemen Sekolah & Siswa (admin_sekolah, pegawai, camat — bukan siswa_sekolah) ──
     Route::middleware(['role:admin_sekolah,pegawai,camat'])->group(function () {

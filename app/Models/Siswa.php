@@ -37,6 +37,29 @@ class Siswa extends Model
         return $this->hasMany(Mading::class, 'id_user', 'id_user');
     }
 
+    // ── Helper ───────────────────────────────────────────
+
+    /**
+     * Siswa dianggap sudah diverifikasi/approved jika user-nya berstatus 'aktif'.
+     * Status ini diubah oleh admin sekolah saat memverifikasi siswa.
+     *
+     * Pengecekan juga memastikan siswa sudah terdaftar di sekolah (id_sekolah tidak null).
+     */
+    public function isApproved(): bool
+    {
+        return !is_null($this->id_sekolah)
+            && $this->user?->status === 'aktif';
+    }
+
+    /**
+     * Pastikan siswa ini memang terdaftar di sekolah tertentu.
+     * Berguna untuk memverifikasi bahwa siswa dan admin sekolah berada di sekolah yang sama.
+     */
+    public function belongsToSekolah(int $id_sekolah): bool
+    {
+        return (int) $this->id_sekolah === $id_sekolah;
+    }
+
     // ── Accessor: ambil data dari masyarakat terkait ─────
 
     /**

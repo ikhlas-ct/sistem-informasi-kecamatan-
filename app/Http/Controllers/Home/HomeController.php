@@ -459,14 +459,42 @@ class HomeController extends Controller
     // ── Detail Mading ───────────────────────────────────────────
     public function mading_detail(Request $request, $slug)
     {
-        $mading = Mading::where('slug', $slug)
-            ->where('status', 'publish')
-            ->where('approval_status', 'approved')
-            ->with(['user.masyarakat', 'sekolah', 'lampiran'])
-            ->firstOrFail();
+        $user = auth()->user();
 
-        // Tambah view counter
-        $mading->increment('views');
+        // Admin sekolah & siswa pemilik boleh preview mading yang belum publish/approved
+        $isAdminSekolah = $user && $user->isAdminSekolah();
+        $isSiswaSekolah = $user && $user->isSiswaSekolah();
+
+        $query = Mading::where('slug', $slug)
+            ->with(['user.masyarakat', 'sekolah', 'lampiran']);
+
+        if ($isAdminSekolah) {
+            // Admin sekolah: bisa lihat semua mading di sekolahnya sendiri
+            $sekolahId = $user->dataSekolah?->id_sekolah;
+            $query->where(function ($q) use ($sekolahId) {
+                // mading publik ATAU mading di sekolahnya
+                $q->where(function ($pub) {
+                    $pub->where('status', 'publish')->where('approval_status', 'approved');
+                })->orWhere('id_sekolah', $sekolahId);
+            });
+        } elseif ($isSiswaSekolah) {
+            // Siswa: bisa lihat mading publik ATAU mading miliknya sendiri
+            $query->where(function ($q) use ($user) {
+                $q->where(function ($pub) {
+                    $pub->where('status', 'publish')->where('approval_status', 'approved');
+                })->orWhere('id_user', $user->id);
+            });
+        } else {
+            // Publik: hanya yang sudah publish & approved
+            $query->where('status', 'publish')->where('approval_status', 'approved');
+        }
+
+        $mading = $query->firstOrFail();
+
+        // Tambah view counter hanya untuk tampilan publik
+        if ($mading->status === 'publish' && $mading->approval_status === 'approved') {
+            $mading->increment('views');
+        }
 
         $komentars = Komentar::with('balasan')
             ->where('id_mading', $mading->id_mading)

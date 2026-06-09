@@ -8,14 +8,14 @@
         'camat'       => 'camat',
         'staf_camat'  => 'staf_camat',
         'wali_nagari' => 'kepala_nagari',
-        'staf_nagari' => 'staf_nagari',
-        default       => 'staf_nagari',
+        'pegawai_nagari' => 'pegawai_nagari',
+        default       => 'pegawai_nagari',
     };
     $tipeLabel = match($currentTipe) {
         'camat'        => ['text'=>'Camat',         'bg'=>'#dbeafe','color'=>'#1e40af'],
         'staf_camat'   => ['text'=>'Staf Camat',    'bg'=>'#ede9fe','color'=>'#5b21b6'],
         'kepala_nagari'=> ['text'=>'Kepala Nagari', 'bg'=>'#ccfbf1','color'=>'#0f766e'],
-        'staf_nagari'  => ['text'=>'Staf Nagari',   'bg'=>'#dcfce7','color'=>'#15803d'],
+        'pegawai_nagari'  => ['text'=>'Pegawai Nagari',   'bg'=>'#dcfce7','color'=>'#15803d'],
         default        => ['text'=>$currentTipe,     'bg'=>'#f1f5f9','color'=>'#64748b'],
     };
 @endphp
@@ -339,7 +339,7 @@
                             <div class="d-flex flex-column gap-2">
                                 @foreach(['staf_camat'=>['Staf Camat','#ede9fe','#5b21b6','id-badge'],
                                            'kepala_nagari'=>['Kepala Nagari','#ccfbf1','#0f766e','user-shield'],
-                                           'staf_nagari'=>['Staf Nagari','#dcfce7','#15803d','users']] as $val=>[$lbl,$bg,$col,$ico])
+                                           'pegawai_nagari'=>['Pegawai Nagari','#dcfce7','#15803d','users']] as $val=>[$lbl,$bg,$col,$ico])
                                 <div>
                                     <input type="radio" id="tipe_{{ $val }}" name="tipe" value="{{ $val }}" class="tipe-radio tipe-select"
                                            {{ old('tipe', $currentTipe) === $val ? 'checked' : '' }}>
@@ -350,11 +350,11 @@
                                 </div>
                                 @endforeach
                             </div>
-                        @elseif($rl === 'staf_camat' && in_array($currentTipe, ['kepala_nagari','staf_nagari']))
+                        @elseif($rl === 'staf_camat' && in_array($currentTipe, ['kepala_nagari','pegawai_nagari']))
                             {{-- Staf camat bisa ubah tipe antar nagari level --}}
                             <div class="d-flex flex-column gap-2">
                                 @foreach(['kepala_nagari'=>['Kepala Nagari','#ccfbf1','#0f766e','user-shield'],
-                                           'staf_nagari'=>['Staf Nagari','#dcfce7','#15803d','users']] as $val=>[$lbl,$bg,$col,$ico])
+                                           'pegawai_nagari'=>['Pegawai Nagari','#dcfce7','#15803d','users']] as $val=>[$lbl,$bg,$col,$ico])
                                 <div>
                                     <input type="radio" id="tipe_{{ $val }}" name="tipe" value="{{ $val }}" class="tipe-radio tipe-select"
                                            {{ old('tipe', $currentTipe) === $val ? 'checked' : '' }}>
@@ -378,7 +378,7 @@
                 </div>
 
                 {{-- Nagari (muncul jika tipe nagari dan bisa diubah) --}}
-                @if(in_array($currentTipe, ['kepala_nagari','staf_nagari']))
+                @if(in_array($currentTipe, ['kepala_nagari','pegawai_nagari']))
                 <div class="card section-card" id="nagari-section">
                     <div class="card-body">
                         <div class="section-divider"><i class="fas fa-map-marker-alt"></i> Nagari</div>
@@ -530,7 +530,7 @@
     function toggleNagariSection() {
         if (!nagariSection) return;
         const sel = document.querySelector('.tipe-select:checked');
-        const showNagari = sel && ['kepala_nagari','staf_nagari'].includes(sel.value);
+        const showNagari = sel && ['kepala_nagari','pegawai_nagari'].includes(sel.value);
         nagariSection.style.display = showNagari ? '' : 'none';
         checkKepalaWarning();
     }

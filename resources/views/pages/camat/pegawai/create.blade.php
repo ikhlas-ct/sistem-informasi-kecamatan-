@@ -296,94 +296,107 @@
                 </div>
 
                 {{-- Tipe Pegawai --}}
-                <div class="card section-card">
-                    <div class="card-body">
-                        <div class="section-divider"><i class="fas fa-sitemap"></i> Tipe Pegawai</div>
-
-                        @error('tipe')
-                            <div class="text-danger mb-2" style="font-size:.78rem;"><i class="fas fa-exclamation-triangle me-1"></i>{{ $message }}</div>
-                        @enderror
-
-                        <div class="d-flex flex-column gap-2">
-
-                            @if(in_array('camat', $allowedTipes))
-                            <div>
-                                <input type="radio" id="tipe_camat" name="tipe" value="camat" class="tipe-radio"
-                                       {{ old('tipe')=='camat' ? 'checked' : '' }}
-                                       {{ $camatExists ? 'disabled' : '' }}>
-                                <label for="tipe_camat" class="tipe-label">
-                                    <div class="tipe-icon" style="background:#dbeafe;color:#1e40af;"><i class="fas fa-user-tie"></i></div>
-                                    <div>
-                                        <div>Camat</div>
-                                        <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">
-                                            {{ $camatExists ? 'Sudah ada camat' : 'Admin tertinggi sistem' }}
-                                        </div>
-                                    </div>
-                                </label>
+                @if($rl === 'wali_nagari')
+                    {{-- Kepala nagari: tipe otomatis Pegawai Nagari, tidak perlu pilih --}}
+                    <div class="card section-card">
+                        <div class="card-body">
+                            <div class="section-divider"><i class="fas fa-sitemap"></i> Tipe Pegawai</div>
+                            <div class="info-notice">
+                                <i class="fas fa-lock"></i>
+                                Tipe otomatis: <strong>Pegawai Nagari</strong> — sesuai wewenang Anda.
                             </div>
-                            @endif
-
-                            @if(in_array('staf_camat', $allowedTipes))
-                            <div>
-                                <input type="radio" id="tipe_staf_camat" name="tipe" value="staf_camat" class="tipe-radio"
-                                       {{ old('tipe')=='staf_camat' ? 'checked' : '' }}>
-                                <label for="tipe_staf_camat" class="tipe-label">
-                                    <div class="tipe-icon" style="background:#ede9fe;color:#5b21b6;"><i class="fas fa-id-badge"></i></div>
-                                    <div>
-                                        <div>Staf Camat</div>
-                                        <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">Kelola pegawai nagari</div>
-                                    </div>
-                                </label>
-                            </div>
-                            @endif
-
-                            @if(in_array('kepala_nagari', $allowedTipes))
-                            <div>
-                                <input type="radio" id="tipe_kepala" name="tipe" value="kepala_nagari" class="tipe-radio tipe-nagari"
-                                       {{ old('tipe')=='kepala_nagari' ? 'checked' : '' }}>
-                                <label for="tipe_kepala" class="tipe-label">
-                                    <div class="tipe-icon" style="background:#ccfbf1;color:#0f766e;"><i class="fas fa-user-shield"></i></div>
-                                    <div>
-                                        <div>Kepala Nagari</div>
-                                        <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">1 per nagari</div>
-                                    </div>
-                                </label>
-                            </div>
-                            @endif
-
-                            @if(in_array('staf_nagari', $allowedTipes))
-                            <div>
-                                <input type="radio" id="tipe_staf" name="tipe" value="staf_nagari" class="tipe-radio tipe-nagari"
-                                       {{ old('tipe')=='staf_nagari' ? 'checked' : '' }}>
-                                <label for="tipe_staf" class="tipe-label">
-                                    <div class="tipe-icon" style="background:#dcfce7;color:#15803d;"><i class="fas fa-users"></i></div>
-                                    <div>
-                                        <div>Staf Nagari</div>
-                                        <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">Pegawai tingkat nagari</div>
-                                    </div>
-                                </label>
-                            </div>
-                            @endif
                         </div>
                     </div>
-                </div>
-
-                {{-- Pilih Nagari (muncul jika tipe nagari) --}}
-                <div class="card section-card" id="nagari-section" style="{{ in_array(old('tipe'), ['kepala_nagari','staf_nagari']) ? '' : 'display:none;' }}">
-                    <div class="card-body">
-                        <div class="section-divider"><i class="fas fa-map-marker-alt"></i> Nagari</div>
-
-                        @if($lockedNagari)
-                            {{-- Kepala nagari: nagari dikunci --}}
+                    {{-- Nagari otomatis dikunci --}}
+                    <div class="card section-card">
+                        <div class="card-body">
+                            <div class="section-divider"><i class="fas fa-map-marker-alt"></i> Nagari</div>
                             <div class="info-notice">
                                 <i class="fas fa-lock"></i>
                                 Nagari dikunci sesuai nagari Anda.
                             </div>
-                            <input type="hidden" name="id_nagari" value="{{ $lockedNagari }}">
                             <div class="form-control" style="background:#f1f5f9;cursor:default;">
                                 {{ $nagaris->firstWhere('id', $lockedNagari)?->nama_nagari ?? '-' }}
                             </div>
-                        @else
+                        </div>
+                    </div>
+                @else
+                    <div class="card section-card">
+                        <div class="card-body">
+                            <div class="section-divider"><i class="fas fa-sitemap"></i> Tipe Pegawai</div>
+
+                            @error('tipe')
+                                <div class="text-danger mb-2" style="font-size:.78rem;"><i class="fas fa-exclamation-triangle me-1"></i>{{ $message }}</div>
+                            @enderror
+
+                            <div class="d-flex flex-column gap-2">
+
+                                @if(in_array('camat', $allowedTipes))
+                                <div>
+                                    <input type="radio" id="tipe_camat" name="tipe" value="camat" class="tipe-radio"
+                                           {{ old('tipe')=='camat' ? 'checked' : '' }}
+                                           {{ $camatExists ? 'disabled' : '' }}>
+                                    <label for="tipe_camat" class="tipe-label">
+                                        <div class="tipe-icon" style="background:#dbeafe;color:#1e40af;"><i class="fas fa-user-tie"></i></div>
+                                        <div>
+                                            <div>Camat</div>
+                                            <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">
+                                                {{ $camatExists ? 'Sudah ada camat' : 'Admin tertinggi sistem' }}
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                                @endif
+
+                                @if(in_array('staf_camat', $allowedTipes))
+                                <div>
+                                    <input type="radio" id="tipe_staf_camat" name="tipe" value="staf_camat" class="tipe-radio"
+                                           {{ old('tipe')=='staf_camat' ? 'checked' : '' }}>
+                                    <label for="tipe_staf_camat" class="tipe-label">
+                                        <div class="tipe-icon" style="background:#ede9fe;color:#5b21b6;"><i class="fas fa-id-badge"></i></div>
+                                        <div>
+                                            <div>Staf Camat</div>
+                                            <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">Kelola pegawai nagari</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                @endif
+
+                                @if(in_array('kepala_nagari', $allowedTipes))
+                                <div>
+                                    <input type="radio" id="tipe_kepala" name="tipe" value="kepala_nagari" class="tipe-radio tipe-nagari"
+                                           {{ old('tipe')=='kepala_nagari' ? 'checked' : '' }}>
+                                    <label for="tipe_kepala" class="tipe-label">
+                                        <div class="tipe-icon" style="background:#ccfbf1;color:#0f766e;"><i class="fas fa-user-shield"></i></div>
+                                        <div>
+                                            <div>Kepala Nagari</div>
+                                            <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">1 per nagari</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                @endif
+
+                                @if(in_array('pegawai_nagari', $allowedTipes))
+                                <div>
+                                    <input type="radio" id="tipe_staf" name="tipe" value="pegawai_nagari" class="tipe-radio tipe-nagari"
+                                           {{ old('tipe')=='pegawai_nagari' ? 'checked' : '' }}>
+                                    <label for="tipe_staf" class="tipe-label">
+                                        <div class="tipe-icon" style="background:#dcfce7;color:#15803d;"><i class="fas fa-users"></i></div>
+                                        <div>
+                                            <div>Pegawai Nagari</div>
+                                            <div style="font-size:.72rem;font-weight:400;color:#94a3b8;">Pegawai tingkat nagari</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Pilih Nagari (muncul jika tipe nagari) --}}
+                    <div class="card section-card" id="nagari-section" style="{{ in_array(old('tipe'), ['kepala_nagari','pegawai_nagari']) ? '' : 'display:none;' }}">
+                        <div class="card-body">
+                            <div class="section-divider"><i class="fas fa-map-marker-alt"></i> Nagari</div>
                             <label>Pilih Nagari <span class="required-mark">*</span></label>
                             <select name="id_nagari" id="nagari-select"
                                     class="form-select @error('id_nagari') is-invalid @enderror">
@@ -400,9 +413,9 @@
                             <div id="kepala-warning" class="text-danger mt-1" style="font-size:.78rem;display:none;">
                                 <i class="fas fa-exclamation-triangle me-1"></i>Nagari ini sudah memiliki Kepala Nagari.
                             </div>
-                        @endif
+                        </div>
                     </div>
-                </div>
+                @endif
 
                 {{-- Akun Login --}}
                 <div class="card section-card">
@@ -493,7 +506,7 @@
 
     function toggleNagari() {
         const selected = document.querySelector('.tipe-radio:checked');
-        const isNagari = selected && ['kepala_nagari','staf_nagari'].includes(selected.value);
+        const isNagari = selected && ['kepala_nagari','pegawai_nagari'].includes(selected.value);
         nagariSection && (nagariSection.style.display = isNagari ? '' : 'none');
         checkKepalaWarning();
     }

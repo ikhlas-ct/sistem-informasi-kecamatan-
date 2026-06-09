@@ -3,7 +3,7 @@
 @section('title', 'Edit Mading – ' . Str::limit($mading->judul, 40))
 
 @php
-    $isSekolah    = Auth::user()->role === 'sekolah';
+    $isSekolah    = Auth::user()->isAdminSekolah();
     $jenisOptions = [
         'karya'      => 'Karya Siswa',
         'pengumuman' => 'Pengumuman',

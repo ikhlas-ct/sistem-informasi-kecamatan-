@@ -3,6 +3,8 @@
 @section('title', 'Edit Siswa – ' . $siswa->nama_siswa)
 
 @section('styles')
+{{-- Select2 --}}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body,.card,label,.btn{font-family:'Plus Jakarta Sans',sans-serif;}
@@ -34,19 +36,6 @@
     .locked-field{background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 12px;font-size:.84rem;color:#64748b;display:flex;align-items:center;gap:8px;}
     .locked-field i{color:#94a3b8;font-size:.8rem;}
 
-    .input-pw{position:relative;}
-    .input-pw .form-control{padding-right:40px;}
-    .pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;font-size:.85rem;padding:0;}
-    .pw-toggle:hover{color:var(--accent);}
-
-    .foto-current-wrap{position:relative;width:90px;height:90px;margin:0 auto 10px;}
-    .foto-current{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--accent-light);}
-    .foto-upload-wrap{border:2px dashed #e2e8f0;border-radius:14px;padding:18px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#fafbfc;}
-    .foto-upload-wrap:hover{border-color:var(--accent);background:#f0fdfa;}
-    .foto-preview-wrap{display:none;position:relative;width:90px;height:90px;margin:0 auto 8px;}
-    .foto-preview-wrap img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--accent-light);}
-    .foto-remove-btn{position:absolute;top:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:.65rem;display:flex;align-items:center;justify-content:center;cursor:pointer;}
-
     .info-box{background:#f0fdfa;border:1.5px solid var(--accent-light);border-radius:10px;padding:10px 14px;font-size:.8rem;color:#0f766e;display:flex;align-items:flex-start;gap:8px;}
     .warn-box{background:#fef9c3;border:1.5px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:.8rem;color:#92400e;display:flex;align-items:flex-start;gap:8px;}
 
@@ -55,12 +44,53 @@
     .btn-batal{border-radius:10px;font-size:.85rem;border:1.5px solid #e2e8f0;color:#64748b;padding:9px 20px;}
     .btn-batal:hover{background:#f8fafc;}
     .btn-simpan .spinner-border{width:.85rem;height:.85rem;border-width:2px;}
+
+    /* ── Select2 custom theme ── */
+    .select2-container--default .select2-selection--single{
+        border-radius:10px;border:1.5px solid #e2e8f0;height:42px;background:#f8fafc;
+        display:flex;align-items:center;padding:0 12px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered{
+        color:#334155;font-size:.84rem;font-family:'Plus Jakarta Sans',sans-serif;padding:0;line-height:normal;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow{
+        height:40px;right:8px;
+    }
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single{
+        border-color:var(--accent);background:#fff;
+        box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent);
+    }
+    .select2-container--default .select2-selection--single.is-invalid-s2{
+        border-color:#ef4444;
+    }
+    .select2-dropdown{border:1.5px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.1);font-family:'Plus Jakarta Sans',sans-serif;font-size:.84rem;}
+    .select2-container--default .select2-results__option--highlighted[aria-selected]{
+        background:var(--accent);
+    }
+    .select2-container--default .select2-results__option[aria-selected=true]{
+        background:var(--accent-light);color:var(--accent);
+    }
+    .select2-search--dropdown .select2-search__field{
+        border-radius:8px;border:1.5px solid #e2e8f0;font-size:.83rem;padding:7px 10px;
+    }
+    .select2-container--default .select2-results__option.select2-results__message{
+        color:#94a3b8;font-size:.8rem;
+    }
+    .select2-container{width:100%!important;}
+
+    /* Badge current masyarakat */
+    .masy-badge{background:#f0fdfa;border:1.5px solid var(--accent-light);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+    .masy-badge-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;}
+    .masy-badge-name{font-size:.83rem;font-weight:700;color:#0f766e;}
+    .masy-badge-nik{font-size:.76rem;color:#64748b;}
 </style>
 @endsection
 
 @section('content')
 @php
     $masyarakat = $siswa->user?->masyarakat;
+    $u          = $siswa->user;
 @endphp
 <div class="container">
 
@@ -90,8 +120,7 @@
     </div>
     @endif
 
-    <form action="{{ route('siswa.update', $siswa->id_siswa) }}" method="POST"
-          enctype="multipart/form-data" id="form-edit">
+    <form action="{{ route('siswa.update', $siswa->id_siswa) }}" method="POST" id="form-edit">
         @csrf @method('PUT')
 
         <div class="row g-4">
@@ -99,68 +128,74 @@
             {{-- ── Kolom Kiri ── --}}
             <div class="col-lg-8">
 
-                {{-- Data Masyarakat --}}
+                {{-- ── CARD: Akun / Masyarakat ── --}}
                 <div class="card section-card">
                     <div class="card-body">
-                        <div class="section-divider"><i class="fas fa-id-card"></i> Data Masyarakat</div>
+                        <div class="section-divider"><i class="fas fa-user-circle"></i> Akun Masyarakat</div>
+
+                        {{-- Tampilkan masyarakat yang sedang terhubung --}}
+                        <div class="masy-badge">
+                            <div class="masy-badge-avatar">
+                                @if($masyarakat?->foto_profil)
+                                    <img src="{{ Storage::url($masyarakat->foto_profil) }}"
+                                         style="width:36px;height:36px;border-radius:50%;object-fit:cover;" alt="">
+                                @else
+                                    <i class="fas fa-user"></i>
+                                @endif
+                            </div>
+                            <div>
+                                <div class="masy-badge-name">{{ $masyarakat?->nama_masyarakat ?? '-' }}</div>
+                                <div class="masy-badge-nik">NIK: {{ $u?->nip_nik ?? '-' }}</div>
+                            </div>
+                            <span style="margin-left:auto;background:var(--accent);color:#fff;font-size:.71rem;padding:3px 10px;border-radius:20px;font-weight:700;">
+                                Terhubung
+                            </span>
+                        </div>
+
                         <div class="info-box mb-3">
                             <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
-                            <span>Data ini tersimpan di profil masyarakat yang terhubung ke akun siswa.</span>
+                            <span>
+                                Anda dapat <strong>mengganti</strong> masyarakat yang terhubung ke siswa ini.
+                                Hanya masyarakat yang <strong>belum menjadi siswa atau admin sekolah</strong> yang dapat dipilih.
+                                Masyarakat lama otomatis dilepas.
+                            </span>
                         </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Nama Lengkap <span class="req">*</span></label>
-                                <input type="text" name="nama_masyarakat"
-                                       class="form-control @error('nama_masyarakat') is-invalid @enderror"
-                                       value="{{ old('nama_masyarakat', $masyarakat?->nama_masyarakat) }}"
-                                       placeholder="Nama lengkap">
-                                @error('nama_masyarakat')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">NIK (Username Login)</label>
-                                <div class="locked-field">
-                                    <i class="fas fa-lock"></i>
-                                    {{ $siswa->user?->nip_nik ?? '-' }}
-                                </div>
-                                <small class="text-muted" style="font-size:.72rem;">NIK tidak dapat diubah</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Jenis Kelamin</label>
-                                <select name="jenis_kelamin"
-                                        class="form-select @error('jenis_kelamin') is-invalid @enderror">
-                                    <option value="">— Pilih —</option>
-                                    <option value="laki-laki"  {{ old('jenis_kelamin', $masyarakat?->jenis_kelamin) === 'laki-laki'  ? 'selected' : '' }}>Laki-laki</option>
-                                    <option value="perempuan"  {{ old('jenis_kelamin', $masyarakat?->jenis_kelamin) === 'perempuan'  ? 'selected' : '' }}>Perempuan</option>
-                                </select>
-                                @error('jenis_kelamin')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">No. HP</label>
-                                <input type="text" name="no_hp"
-                                       class="form-control @error('no_hp') is-invalid @enderror"
-                                       value="{{ old('no_hp', $masyarakat?->no_hp) }}"
-                                       placeholder="08xxxxxxxxxx">
-                                @error('no_hp')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Nagari</label>
-                                <select name="id_nagari_masy"
-                                        class="form-select @error('id_nagari_masy') is-invalid @enderror">
-                                    <option value="">— Pilih Nagari —</option>
-                                    @foreach($nagariAllList as $n)
-                                        <option value="{{ $n->id }}"
-                                            {{ old('id_nagari_masy', $masyarakat?->id_nagari) == $n->id ? 'selected' : '' }}>
-                                            {{ $n->nama_nagari }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('id_nagari_masy')<div class="invalid-feedback">{{ $message }}</div>@enderror
+
+                        <div>
+                            <label class="form-label">Pilih / Ganti Masyarakat <span class="req">*</span></label>
+
+                            {{--
+                                Select2 AJAX – pre-populate dengan user saat ini.
+                                exclude_user_id → agar user saat ini tetap muncul di hasil pencarian
+                                meskipun sekolah-nya = 'siswa'.
+                            --}}
+                            <select name="id_user_masyarakat" id="select-masyarakat"
+                                    class="@error('id_user_masyarakat') is-invalid-s2 @enderror"
+                                    style="width:100%">
+                                {{-- Pre-populate nilai saat ini --}}
+                                <option value="{{ old('id_user_masyarakat', $siswa->id_user) }}" selected>
+                                    {{ old('_masyarakat_text', $currentMasyarakatText) }}
+                                </option>
+                            </select>
+
+                            @error('id_user_masyarakat')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+
+                            <div class="mt-2" style="font-size:.76rem;color:#94a3b8;">
+                                <i class="fas fa-search me-1"></i>
+                                Ketik nama atau NIK untuk mencari masyarakat lain.
                             </div>
                         </div>
+
+                        {{-- Hidden: teks Select2 untuk re-populate setelah validasi gagal --}}
+                        <input type="hidden" name="_masyarakat_text" id="hidden-masyarakat-text"
+                               value="{{ old('_masyarakat_text', $currentMasyarakatText) }}">
+
                     </div>
                 </div>
 
-                {{-- Data Siswa --}}
+                {{-- ── CARD: Data Siswa ── --}}
                 <div class="card section-card">
                     <div class="card-body">
                         <div class="section-divider"><i class="fas fa-graduation-cap"></i> Data Siswa</div>
@@ -185,7 +220,7 @@
                     </div>
                 </div>
 
-                {{-- Penempatan Sekolah --}}
+                {{-- ── CARD: Penempatan Sekolah ── --}}
                 <div class="card section-card">
                     <div class="card-body">
                         <div class="section-divider"><i class="fas fa-school"></i> Penempatan Sekolah</div>
@@ -250,39 +285,7 @@
                                     Pilih nagari untuk memuat ulang daftar sekolah.</span>
                             </div>
                         @endif
-                    </div>
-                </div>
 
-                {{-- Ganti Password --}}
-                <div class="card section-card">
-                    <div class="card-body">
-                        <div class="section-divider"><i class="fas fa-lock"></i> Ganti Password
-                            <span style="font-size:.7rem;color:#94a3b8;font-weight:400;">(opsional)</span>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Password Baru</label>
-                                <div class="input-pw">
-                                    <input type="password" name="password" id="pw1"
-                                           class="form-control @error('password') is-invalid @enderror"
-                                           placeholder="Kosongkan jika tidak ganti">
-                                    <button type="button" class="pw-toggle" onclick="togglePw('pw1',this)">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                                @error('password')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Konfirmasi Password Baru</label>
-                                <div class="input-pw">
-                                    <input type="password" name="password_confirmation" id="pw2"
-                                           class="form-control" placeholder="Ulangi password baru">
-                                    <button type="button" class="pw-toggle" onclick="togglePw('pw2',this)">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -291,66 +294,17 @@
             {{-- ── Kolom Kanan ── --}}
             <div class="col-lg-4">
 
-                {{-- Foto Profil (dari masyarakat) --}}
-                <div class="card section-card">
-                    <div class="card-body">
-                        <div class="section-divider"><i class="fas fa-camera"></i> Foto Profil</div>
-                        <div class="info-box mb-3" style="font-size:.75rem;">
-                            <i class="fas fa-info-circle flex-shrink-0"></i>
-                            <span>Foto disimpan ke data masyarakat yang terhubung.</span>
-                        </div>
-
-                        @php $fotoSaatIni = $masyarakat?->foto_profil; @endphp
-                        @if($fotoSaatIni)
-                        <div class="text-center mb-3">
-                            <div class="foto-current-wrap">
-                                <img src="{{ Storage::url($fotoSaatIni) }}" class="foto-current"
-                                     alt="{{ $siswa->nama_siswa }}">
-                            </div>
-                            <div style="font-size:.74rem;color:#94a3b8;" class="mb-2">Foto saat ini</div>
-                            <div class="form-check d-inline-flex align-items-center gap-2">
-                                <input type="checkbox" name="hapus_foto" value="1"
-                                       id="chk-hapus" class="form-check-input" style="cursor:pointer;">
-                                <label for="chk-hapus" class="form-check-label"
-                                       style="font-size:.78rem;color:#ef4444;cursor:pointer;font-weight:600;">
-                                    <i class="fas fa-trash-alt me-1"></i> Hapus foto ini
-                                </label>
-                            </div>
-                        </div>
-                        @endif
-
-                        <input type="file" name="foto_profil" id="foto-input"
-                               accept="image/jpg,image/jpeg,image/png,image/webp" class="d-none">
-                        <div class="foto-upload-wrap" onclick="document.getElementById('foto-input').click()">
-                            <div class="foto-preview-wrap" id="preview-wrap">
-                                <img id="foto-preview" src="" alt="Preview">
-                                <button type="button" class="foto-remove-btn" id="btn-remove-foto">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            <div id="foto-placeholder">
-                                <div style="font-size:1.5rem;color:#cbd5e1;margin-bottom:4px;"><i class="fas fa-camera"></i></div>
-                                <div style="font-size:.78rem;color:#64748b;font-weight:600;">
-                                    {{ $fotoSaatIni ? 'Ganti foto' : 'Upload foto' }}
-                                </div>
-                                <div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">JPG, PNG, WEBP · Maks 2 MB</div>
-                            </div>
-                        </div>
-                        @error('foto_profil')
-                        <div class="text-danger mt-1" style="font-size:.75rem;">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
                 {{-- Info Akun --}}
                 <div class="card section-card">
                     <div class="card-body">
                         <div class="section-divider"><i class="fas fa-user-circle"></i> Info Akun</div>
-                        @php $u = $siswa->user; @endphp
                         <table style="width:100%;font-size:.82rem;border-collapse:collapse;">
-                            <tr><td style="color:#94a3b8;padding:5px 0;width:40%;font-weight:600;">NIK</td>
-                                <td style="color:#1e293b;font-weight:700;">{{ $u?->nip_nik ?? '-' }}</td></tr>
-                            <tr><td style="color:#94a3b8;padding:5px 0;font-weight:600;">Sub-role</td>
+                            <tr>
+                                <td style="color:#94a3b8;padding:5px 0;width:40%;font-weight:600;">NIK</td>
+                                <td style="color:#1e293b;font-weight:700;">{{ $u?->nip_nik ?? '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td style="color:#94a3b8;padding:5px 0;font-weight:600;">Sub-role</td>
                                 <td>
                                     @if($u?->role === 'masyarakat' && $u?->sekolah === 'siswa')
                                         <span style="background:var(--accent-light);color:var(--accent);font-size:.72rem;padding:2px 8px;border-radius:6px;font-weight:700;">
@@ -361,16 +315,28 @@
                                     @endif
                                 </td>
                             </tr>
-                            <tr><td style="color:#94a3b8;padding:5px 0;font-weight:600;">Status</td>
+                            <tr>
+                                <td style="color:#94a3b8;padding:5px 0;font-weight:600;">Status</td>
                                 <td>
                                     <span class="badge bg-{{ $u?->status === 'aktif' ? 'success' : 'secondary' }} bg-opacity-10 text-{{ $u?->status === 'aktif' ? 'success' : 'secondary' }}" style="font-size:.72rem;">
                                         {{ ucfirst($u?->status ?? '-') }}
                                     </span>
                                 </td>
                             </tr>
-                            <tr><td style="color:#94a3b8;padding:5px 0;font-weight:600;">KK</td>
-                                <td style="color:#334155;">{{ $masyarakat?->kk ?? '-' }}</td></tr>
+                            <tr>
+                                <td style="color:#94a3b8;padding:5px 0;font-weight:600;">KK</td>
+                                <td style="color:#334155;">{{ $masyarakat?->kk ?? '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td style="color:#94a3b8;padding:5px 0;font-weight:600;">No. HP</td>
+                                <td style="color:#334155;">{{ $masyarakat?->no_hp ?? '-' }}</td>
+                            </tr>
                         </table>
+
+                        <div class="info-box mt-3" style="font-size:.76rem;">
+                            <i class="fas fa-lock flex-shrink-0"></i>
+                            <span>Data profil masyarakat (nama, foto, dll.) dikelola melalui menu <strong>Masyarakat</strong>.</span>
+                        </div>
                     </div>
                 </div>
 
@@ -385,6 +351,22 @@
                             <div><i class="fas fa-calendar-check me-2 text-muted"></i>
                                 Diperbarui: <strong>{{ $siswa->updated_at?->translatedFormat('d M Y, H:i') }}</strong>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Badge info --}}
+                <div class="card section-card" style="background:var(--accent-light);border:1.5px solid var(--accent);">
+                    <div class="card-body py-3">
+                        <div style="font-size:.8rem;color:#0f766e;font-weight:600;">
+                            <i class="fas fa-shield-check me-1"></i> Pengecekan Otomatis
+                        </div>
+                        <div style="font-size:.77rem;color:#0f766e;margin-top:6px;line-height:1.7;">
+                            Sistem tidak memperbolehkan memilih masyarakat yang sudah menjadi:
+                            <ul style="padding-left:16px;margin:4px 0 0;">
+                                <li>Siswa di sekolah lain</li>
+                                <li>Admin sekolah manapun</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -407,89 +389,105 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-function togglePw(id, btn) {
-    const el = document.getElementById(id), ic = btn.querySelector('i');
-    if (el.type === 'password') { el.type = 'text'; ic.classList.replace('fa-eye','fa-eye-slash'); }
-    else { el.type = 'password'; ic.classList.replace('fa-eye-slash','fa-eye'); }
-}
+$(function () {
 
-// Foto preview
-const fotoInput = document.getElementById('foto-input');
-fotoInput.addEventListener('change', function () {
-    const file = this.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        document.getElementById('foto-preview').src = e.target.result;
-        document.getElementById('preview-wrap').style.display = 'block';
-        document.getElementById('foto-placeholder').style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-});
-document.getElementById('btn-remove-foto')?.addEventListener('click', function (e) {
-    e.stopPropagation();
-    fotoInput.value = '';
-    document.getElementById('foto-preview').src = '';
-    document.getElementById('preview-wrap').style.display = 'none';
-    document.getElementById('foto-placeholder').style.display = 'block';
-});
+    // ── Select2 AJAX: pilih / ganti masyarakat ─────────────────
+    // exclude_user_id → agar user yang sedang terhubung tetap
+    // muncul di hasil pencarian (sekolah-nya = 'siswa' tapi harus bisa dipilih ulang)
+    const excludeUserId = {{ $siswa->id_user }};
 
-// Sekolah AJAX
-const oldSekolah = "{{ old('id_sekolah', $siswa->id_sekolah) }}";
+    $('#select-masyarakat').select2({
+        placeholder: '— Ketik nama atau NIK untuk mencari —',
+        allowClear : false,   // tidak boleh kosong di edit
+        minimumInputLength: 0,
+        language: {
+            inputTooShort: () => 'Ketik untuk mencari masyarakat...',
+            noResults    : () => 'Masyarakat tidak ditemukan.',
+            searching    : () => 'Mencari...',
+            loadingMore  : () => 'Memuat lebih banyak...',
+            errorLoading : () => 'Gagal memuat data.',
+        },
+        ajax: {
+            url      : '{{ route('siswa.ajax.masyarakat') }}',
+            dataType : 'json',
+            delay    : 300,
+            data     : params => ({ q: params.term, exclude_user_id: excludeUserId }),
+            processResults: data => ({ results: data }),
+            cache    : true,
+        },
+    });
 
-@if($isSuperAdmin)
-const selectNagari  = document.getElementById('select-nagari');
-const selectSekolah = document.getElementById('select-sekolah');
+    // Simpan teks pilihan ke hidden field
+    $('#select-masyarakat').on('select2:select', function (e) {
+        $('#hidden-masyarakat-text').val(e.params.data.text);
+    });
 
-function loadSekolah(idNagari) {
-    selectSekolah.innerHTML = '<option value="">Memuat...</option>';
-    selectSekolah.disabled  = true;
-    if (!idNagari) {
-        selectSekolah.innerHTML = '<option value="">— Pilih Nagari dulu —</option>';
-        selectSekolah.disabled  = false; return;
+    // ── Sekolah AJAX ────────────────────────────────────────────
+    const oldSekolah = "{{ old('id_sekolah', $siswa->id_sekolah) }}";
+
+    @if($isSuperAdmin)
+    const selectNagari  = document.getElementById('select-nagari');
+    const selectSekolah = document.getElementById('select-sekolah');
+
+    function loadSekolah(idNagari) {
+        selectSekolah.innerHTML = '<option value="">Memuat...</option>';
+        selectSekolah.disabled  = true;
+        if (!idNagari) {
+            selectSekolah.innerHTML = '<option value="">— Pilih Nagari dulu —</option>';
+            selectSekolah.disabled  = false; return;
+        }
+        fetch(`{{ route('siswa.ajax.sekolah-by-nagari') }}?id_nagari=${idNagari}`)
+            .then(r => r.json())
+            .then(data => {
+                selectSekolah.disabled = false;
+                selectSekolah.innerHTML = data.length
+                    ? '<option value="">— Pilih Sekolah —</option>'
+                    : '<option value="">Tidak ada sekolah aktif</option>';
+                data.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id_sekolah;
+                    opt.textContent = `${s.nama_sekolah} (${s.jenjang})`;
+                    if (String(s.id_sekolah) === String(oldSekolah)) opt.selected = true;
+                    selectSekolah.appendChild(opt);
+                });
+            }).catch(() => {
+                selectSekolah.innerHTML = '<option value="">Gagal memuat</option>';
+                selectSekolah.disabled  = false;
+            });
     }
-    fetch(`{{ route('siswa.ajax.sekolah-by-nagari') }}?id_nagari=${idNagari}`)
-        .then(r => r.json())
-        .then(data => {
-            selectSekolah.disabled = false;
-            selectSekolah.innerHTML = data.length ? '<option value="">— Pilih Sekolah —</option>' : '<option value="">Tidak ada sekolah aktif</option>';
-            data.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id_sekolah;
-                opt.textContent = `${s.nama_sekolah} (${s.jenjang})`;
-                if (String(s.id_sekolah) === String(oldSekolah)) opt.selected = true;
-                selectSekolah.appendChild(opt);
-            });
-        }).catch(() => { selectSekolah.innerHTML = '<option value="">Gagal memuat</option>'; selectSekolah.disabled = false; });
-}
-if (selectNagari.value) loadSekolah(selectNagari.value);
-selectNagari.addEventListener('change', function () { loadSekolah(this.value); });
-@endif
+    if (selectNagari.value) loadSekolah(selectNagari.value);
+    selectNagari.addEventListener('change', function () { loadSekolah(this.value); });
+    @endif
 
-@if($isNagari)
-(function () {
-    const idNagari = document.getElementById('selected-nagari').value;
-    const sel = document.getElementById('select-sekolah');
-    fetch(`{{ route('siswa.ajax.sekolah-by-nagari') }}?id_nagari=${idNagari}`)
-        .then(r => r.json())
-        .then(data => {
-            sel.innerHTML = '<option value="">— Pilih Sekolah —</option>';
-            data.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id_sekolah;
-                opt.textContent = `${s.nama_sekolah} (${s.jenjang})`;
-                if (String(s.id_sekolah) === String(oldSekolah)) opt.selected = true;
-                sel.appendChild(opt);
+    @if($isNagari)
+    (function () {
+        const idNagari = document.getElementById('selected-nagari').value;
+        const sel      = document.getElementById('select-sekolah');
+        fetch(`{{ route('siswa.ajax.sekolah-by-nagari') }}?id_nagari=${idNagari}`)
+            .then(r => r.json())
+            .then(data => {
+                sel.innerHTML = '<option value="">— Pilih Sekolah —</option>';
+                data.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id_sekolah;
+                    opt.textContent = `${s.nama_sekolah} (${s.jenjang})`;
+                    if (String(s.id_sekolah) === String(oldSekolah)) opt.selected = true;
+                    sel.appendChild(opt);
+                });
             });
-        });
-})();
-@endif
+    })();
+    @endif
 
-document.getElementById('form-edit').addEventListener('submit', function () {
-    const btn = document.getElementById('btn-submit');
-    btn.querySelector('.btn-text').classList.add('d-none');
-    btn.querySelector('.spinner-border').classList.remove('d-none');
-    btn.disabled = true;
+    // ── Spinner submit ──────────────────────────────────────────
+    document.getElementById('form-edit').addEventListener('submit', function () {
+        const btn = document.getElementById('btn-submit');
+        btn.querySelector('.btn-text').classList.add('d-none');
+        btn.querySelector('.spinner-border').classList.remove('d-none');
+        btn.disabled = true;
+    });
+
 });
 </script>
 @endsection

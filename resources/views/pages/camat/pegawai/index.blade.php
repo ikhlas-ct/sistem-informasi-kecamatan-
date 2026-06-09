@@ -7,7 +7,7 @@
         'camat'        => ['text' => 'Camat',         'bg' => '#1a73e8'],
         'staf_camat'   => ['text' => 'Staf Camat',    'bg' => '#6366f1'],
         'wali_nagari'  => ['text' => 'Kepala Nagari', 'bg' => '#0d9488'],
-        'staf_nagari'  => ['text' => 'Staf Nagari',   'bg' => '#16a34a'],
+        'pegawai_nagari'  => ['text' => 'Pegawai Nagari', 'bg' => '#16a34a'],
         default        => ['text' => $rl,              'bg' => '#64748b'],
     };
 @endphp
@@ -99,7 +99,7 @@
     .tipe-camat       { background:#dbeafe; color:#1e40af; }
     .tipe-staf_camat  { background:#ede9fe; color:#5b21b6; }
     .tipe-kepala      { background:#ccfbf1; color:#0f766e; }
-    .tipe-staf_nagari { background:#dcfce7; color:#15803d; }
+    .tipe-pegawai_nagari { background:#dcfce7; color:#15803d; }
 
     .status-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px;
                     border-radius:20px; font-size:.72rem; font-weight:600; }
@@ -172,30 +172,19 @@
     {{-- Stat Cards --}}
     <div class="row g-3 mb-4">
         @if($rl === 'camat')
-        <div class="col-6 col-lg-3">
-            <div class="card stat-card blue">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon blue"><i class="fas fa-user-tie"></i></div>
-                    <div>
-                        <div class="stat-value">{{ $totalCamat }}</div>
-                        <div class="stat-label">Camat</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-4">
             <div class="card stat-card indigo">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon indigo"><i class="fas fa-id-badge"></i></div>
                     <div>
-                        <div class="stat-value">{{ $totalStafCamat }}</div>
-                        <div class="stat-label">Staf Camat</div>
+                        <div class="stat-value">{{ $totalPegawaiKecamatan }}</div>
+                        <div class="stat-label">Pegawai Kecamatan</div>
                     </div>
                 </div>
             </div>
         </div>
         @endif
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-{{ $rl === 'camat' ? '4' : '6' }}">
             <div class="card stat-card teal">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon teal"><i class="fas fa-user-shield"></i></div>
@@ -206,13 +195,13 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-lg-{{ $rl === 'camat' ? '4' : '6' }}">
             <div class="card stat-card green">
                 <div class="d-flex align-items-center gap-3">
                     <div class="stat-icon green"><i class="fas fa-users"></i></div>
                     <div>
-                        <div class="stat-value">{{ $totalStafNagari }}</div>
-                        <div class="stat-label">Staf Nagari</div>
+                        <div class="stat-value">{{ $totalPegawaiNagari }}</div>
+                        <div class="stat-label">Pegawai Nagari</div>
                     </div>
                 </div>
             </div>
@@ -244,13 +233,13 @@
                         <option value="camat"        {{ request('tipe')=='camat'        ? 'selected' : '' }}>Camat</option>
                         <option value="staf_camat"   {{ request('tipe')=='staf_camat'   ? 'selected' : '' }}>Staf Camat</option>
                         <option value="kepala_nagari" {{ request('tipe')=='kepala_nagari'? 'selected' : '' }}>Kepala Nagari</option>
-                        <option value="staf_nagari"  {{ request('tipe')=='staf_nagari'  ? 'selected' : '' }}>Staf Nagari</option>
+                        <option value="pegawai_nagari"  {{ request('tipe')=='pegawai_nagari'  ? 'selected' : '' }}>Pegawai Nagari</option>
                     </select>
                     @elseif($rl === 'staf_camat')
                     <select name="tipe" class="form-select" style="max-width:160px;">
                         <option value="">Semua Tipe</option>
                         <option value="kepala_nagari" {{ request('tipe')=='kepala_nagari'? 'selected' : '' }}>Kepala Nagari</option>
-                        <option value="staf_nagari"  {{ request('tipe')=='staf_nagari'  ? 'selected' : '' }}>Staf Nagari</option>
+                        <option value="pegawai_nagari"  {{ request('tipe')=='pegawai_nagari'  ? 'selected' : '' }}>Pegawai Nagari</option>
                     </select>
                     @endif
 
@@ -301,8 +290,8 @@
                                 'camat'       => ['text'=>'Camat',         'class'=>'tipe-camat'],
                                 'staf_camat'  => ['text'=>'Staf Camat',    'class'=>'tipe-staf_camat'],
                                 'wali_nagari' => ['text'=>'Kepala Nagari', 'class'=>'tipe-kepala'],
-                                'staf_nagari' => ['text'=>'Staf Nagari',   'class'=>'tipe-staf_nagari'],
-                                default       => ['text'=>$targetRl,        'class'=>'tipe-staf_nagari'],
+                                'pegawai_nagari' => ['text'=>'Pegawai Nagari',   'class'=>'tipe-pegawai_nagari'],
+                                default       => ['text'=>$targetRl,        'class'=>'tipe-pegawai_nagari'],
                             };
                         @endphp
                         <tr>
@@ -365,7 +354,7 @@
                                     $canAct = match($rl) {
                                         'camat'       => true,
                                         'staf_camat'  => !is_null($pegawai->id_nagari),
-                                        'wali_nagari' => $pegawai->id_nagari == $ap->id_nagari && $pegawai->jabatan_nagari === 'staf_nagari',
+                                        'wali_nagari' => $pegawai->id_nagari == $ap->id_nagari && $pegawai->jabatan_nagari === 'pegawai_nagari',
                                         default       => false,
                                     };
                                 @endphp

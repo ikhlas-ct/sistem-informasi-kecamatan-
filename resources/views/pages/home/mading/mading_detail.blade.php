@@ -43,29 +43,27 @@
     font-weight: bold;
     margin: 20px 0;
 }
-/* Lampiran */
-.lampiran-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-.lampiran-grid a img {
-    width: 120px;
-    height: 90px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 2px solid #ddd;
-    transition: transform 0.2s;
-}
-.lampiran-grid a img:hover { transform: scale(1.04); }
-.lampiran-file {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: #f0f0f0;
-    border-radius: 20px;
-    font-size: 13px;
-    text-decoration: none;
-    color: #333;
-}
-.lampiran-file:hover { background: #e0e0e0; }
+/* Lampiran - Galeri Foto */
+.lampiran-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+.lampiran-gallery a { display: block; border-radius: 10px; overflow: hidden; border: 2px solid #e2e8f0; aspect-ratio: 4/3; background: #f1f5f9; position: relative; }
+.lampiran-gallery a img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s; display: block; }
+.lampiran-gallery a:hover img { transform: scale(1.07); }
+.lampiran-gallery a .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .2s; }
+.lampiran-gallery a:hover .overlay { opacity: 1; }
+.lampiran-gallery a .overlay i { color: #fff; font-size: 1.6rem; }
+/* Grid khusus 1 atau 2 foto */
+.lampiran-gallery.cols-1 { grid-template-columns: 1fr; max-width: 480px; }
+.lampiran-gallery.cols-2 { grid-template-columns: 1fr 1fr; }
+/* Lampiran - File lainnya */
+.lampiran-file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.lampiran-file-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; text-decoration: none; color: #334155; font-size: 13px; transition: background .15s, border-color .15s; }
+.lampiran-file-item:hover { background: #f1f5f9; border-color: #7c3aed; color: #7c3aed; }
+.lampiran-file-item .file-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.lampiran-file-item .file-icon.pdf   { background: #fee2e2; color: #dc2626; }
+.lampiran-file-item .file-icon.video { background: #f3e8ff; color: #7c3aed; }
+.lampiran-file-item .file-icon.other { background: #f1f5f9; color: #64748b; }
+.lampiran-file-item .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.lampiran-file-item .file-dl { font-size: .75rem; color: #94a3b8; flex-shrink: 0; }
 </style>
 @endsection
 
@@ -154,35 +152,73 @@
                                 {!! $mading->isi !!}
                             </div><!-- End post content -->
 
-                            <!-- Lampiran (foto & file) -->
-                            @if ($mading->lampiran->count())
+                            <!-- Lampiran: Galeri Foto & File -->
+                            @php
+                                $lampiranFoto  = $mading->lampiran->where('tipe', 'image');
+                                $lampiranFiles = $mading->lampiran->whereIn('tipe', ['pdf', 'video', 'lainnya']);
+                                $fotoCount     = $lampiranFoto->count();
+                                $gridCols      = $fotoCount === 1 ? 'cols-1' : ($fotoCount === 2 ? 'cols-2' : '');
+                            @endphp
+
+                            {{-- ── Galeri Foto Lampiran ── --}}
+                            @if ($fotoCount)
                             <div class="mt-4">
-                                <h6 class="fw-bold mb-2"><i class="bi bi-paperclip me-1"></i>Lampiran</h6>
-
-                                {{-- Foto --}}
-                                @php $photos = $mading->lampiran->where('tipe', 'foto'); @endphp
-                                @if ($photos->count())
-                                <div class="lampiran-grid">
-                                    @foreach ($photos as $foto)
-                                    <a href="{{ $foto->url }}" target="_blank" title="Lihat foto">
-                                        <img src="{{ $foto->url }}" alt="Lampiran Foto">
+                                <h6 class="fw-bold mb-1" style="font-size:.88rem;color:#475569;">
+                                    <i class="bi bi-images me-1" style="color:#7c3aed;"></i>
+                                    Galeri Foto
+                                    <span class="badge ms-1" style="background:#f3e8ff;color:#7c3aed;font-size:.72rem;">{{ $fotoCount }}</span>
+                                </h6>
+                                <div class="lampiran-gallery {{ $gridCols }}">
+                                    @foreach ($lampiranFoto as $foto)
+                                    <a href="{{ $foto->url }}" target="_blank" title="Lihat gambar penuh">
+                                        <img src="{{ $foto->url }}" alt="Lampiran Foto" loading="lazy">
+                                        <div class="overlay"><i class="bi bi-zoom-in"></i></div>
                                     </a>
                                     @endforeach
                                 </div>
-                                @endif
+                            </div>
+                            @endif
 
-                                {{-- File lainnya --}}
-                                @php $files = $mading->lampiran->where('tipe', '!=', 'foto'); @endphp
-                                @if ($files->count())
-                                <div class="mt-2 d-flex flex-wrap gap-2">
-                                    @foreach ($files as $file)
-                                    <a href="{{ $file->url }}" target="_blank" class="lampiran-file">
-                                        <i class="bi bi-file-earmark-arrow-down"></i>
-                                        {{ basename($file->path) }}
+                            {{-- ── File Lampiran (PDF, Video, dll) ── --}}
+                            @if ($lampiranFiles->count())
+                            <div class="mt-4">
+                                <h6 class="fw-bold mb-1" style="font-size:.88rem;color:#475569;">
+                                    <i class="bi bi-paperclip me-1" style="color:#7c3aed;"></i>
+                                    File Lampiran
+                                    <span class="badge ms-1" style="background:#f3e8ff;color:#7c3aed;font-size:.72rem;">{{ $lampiranFiles->count() }}</span>
+                                </h6>
+                                <div class="lampiran-file-list">
+                                    @foreach ($lampiranFiles as $file)
+                                    @php
+                                        $iconClass = match($file->tipe) {
+                                            'pdf'   => 'pdf',
+                                            'video' => 'video',
+                                            default => 'other',
+                                        };
+                                        $iconBi = match($file->tipe) {
+                                            'pdf'   => 'bi-file-earmark-pdf-fill',
+                                            'video' => 'bi-play-circle-fill',
+                                            default => 'bi-file-earmark-arrow-down-fill',
+                                        };
+                                        $typeLabel = match($file->tipe) {
+                                            'pdf'   => 'PDF',
+                                            'video' => 'Video',
+                                            default => 'File',
+                                        };
+                                    @endphp
+                                    <a href="{{ $file->url }}" target="_blank" class="lampiran-file-item">
+                                        <span class="file-icon {{ $iconClass }}">
+                                            <i class="bi {{ $iconBi }}"></i>
+                                        </span>
+                                        <span class="file-name" title="{{ basename($file->path) }}">
+                                            {{ basename($file->path) }}
+                                        </span>
+                                        <span class="file-dl">
+                                            {{ $typeLabel }} <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                        </span>
                                     </a>
                                     @endforeach
                                 </div>
-                                @endif
                             </div>
                             @endif
 

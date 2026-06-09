@@ -13,29 +13,80 @@ class MadingController extends Controller
 {
     // ── Helper ──────────────────────────────────────────────────
 
-    private function getSekolahId()
+    /**
+     * Ambil id_sekolah berdasarkan role user yang sedang login.
+     *
+     * Admin sekolah → dari tabel sekolah (sekolah.id_user = user.id)
+     * Siswa sekolah → dari tabel siswa  (siswa.id_user   = user.id)
+     *
+     * Mengembalikan null jika user tidak terhubung ke sekolah manapun,
+     * sehingga semua query WHERE id_sekolah = null akan mengembalikan 0 baris
+     * (lebih aman daripada menampilkan semua data).
+     */
+    private function getSekolahId(): ?int
     {
         $user = Auth::user();
 
-        // Admin sekolah → ambil id_sekolah dari relasi sekolah (via id_user)
-        if ($user->isAdminSekolah()) return $user->dataSekolah?->id_sekolah;
+        if ($user->isAdminSekolah()) {
+            return $user->dataSekolah?->id_sekolah
+                ? (int) $user->dataSekolah->id_sekolah
+                : null;
+        }
 
-        // Siswa sekolah → ambil id_sekolah dari relasi siswa (via id_user)
-        if ($user->isSiswaSekolah()) return $user->siswa?->id_sekolah;
+        if ($user->isSiswaSekolah()) {
+            return $user->siswa?->id_sekolah
+                ? (int) $user->siswa->id_sekolah
+                : null;
+        }
 
         return null;
     }
 
     private function isSekolahAdmin(): bool
     {
-        // role = 'masyarakat' + sekolah = 'admin'
         return Auth::user()->isAdminSekolah();
     }
 
     private function isSiswa(): bool
     {
-        // role = 'masyarakat' + sekolah = 'siswa'
         return Auth::user()->isSiswaSekolah();
+    }
+
+    /**
+     * Pastikan admin sekolah benar-benar terhubung ke sekolah.
+     * Abort 403 jika admin tidak punya data sekolah (akun belum lengkap).
+     */
+    private function requireSekolahAdmin(): int
+    {
+        abort_unless($this->isSekolahAdmin(), 403, 'Hanya admin sekolah yang dapat melakukan aksi ini.');
+
+        $sekolahId = $this->getSekolahId();
+        abort_if(is_null($sekolahId), 403, 'Akun admin belum terhubung ke data sekolah.');
+
+        return $sekolahId;
+    }
+
+    /**
+     * Pastikan siswa sudah terverifikasi dan terhubung ke sekolah.
+     * Mengembalikan objek Siswa jika valid, redirect jika tidak.
+     */
+    private function requireSiswaVerified()
+    {
+        $siswa = Auth::user()->siswa;
+
+        if (!$siswa) {
+            return redirect()->back()->with('error', 'Data siswa tidak ditemukan. Hubungi admin sekolah.');
+        }
+
+        if (!$siswa->id_sekolah) {
+            return redirect()->back()->with('error', 'Akun Anda belum terdaftar di sekolah manapun.');
+        }
+
+        if (!$siswa->isApproved()) {
+            return redirect()->back()->with('error', 'Akun Anda belum diverifikasi oleh sekolah.');
+        }
+
+        return $siswa;
     }
 
     // ── INDEX ────────────────────────────────────────────────────
@@ -44,6 +95,14 @@ class MadingController extends Controller
     {
         $user      = Auth::user();
         $sekolahId = $this->getSekolahId();
+
+        // Jika sekolahId null → user tidak terhubung ke sekolah, tampilkan kosong
+        if (is_null($sekolahId)) {
+            return view('pages.mading.index', [
+                'mading' => collect()->paginate(12),
+                'stats'  => ['total' => 0, 'publish' => 0, 'pending' => 0, 'rejected' => 0],
+            ]);
+        }
 
         $query = Mading::with(['user', 'sekolah'])
             ->where('id_sekolah', $sekolahId);
@@ -72,7 +131,9 @@ class MadingController extends Controller
 
         // Stat cards
         $baseQuery = Mading::where('id_sekolah', $sekolahId);
-        if ($this->isSiswa()) $baseQuery->where('id_user', $user->id);
+        if ($this->isSiswa()) {
+            $baseQuery->where('id_user', $user->id);
+        }
 
         $stats = [
             'total'    => (clone $baseQuery)->count(),
@@ -88,11 +149,11 @@ class MadingController extends Controller
 
     public function create()
     {
-        // Siswa harus sudah verified
         if ($this->isSiswa()) {
-            $siswa = Auth::user()->siswa;
-            if (!$siswa || !$siswa->isApproved()) {
-                return redirect()->back()->with('error', 'Akun Anda belum diverifikasi oleh sekolah.');
+            $result = $this->requireSiswaVerified();
+            // Jika requireSiswaVerified mengembalikan redirect, teruskan
+            if ($result instanceof \Illuminate\Http\RedirectResponse) {
+                return $result;
             }
         }
 
@@ -103,20 +164,32 @@ class MadingController extends Controller
 
     public function store(Request $request)
     {
+        // Validasi akses sebelum menyimpan
+        if ($this->isSiswa()) {
+            $result = $this->requireSiswaVerified();
+            if ($result instanceof \Illuminate\Http\RedirectResponse) {
+                return $result;
+            }
+        }
+
         $request->validate([
-            'judul'   => 'required|string|max:255',
-            'isi'     => 'required|string',
-            'jenis'   => 'required|in:karya,pengumuman,berita,cerpen,puisi,lainnya',
-            'gambar'  => 'nullable|image|max:3072',
-            'status'  => 'nullable|in:draft,publish',
+            'judul'      => 'required|string|max:255',
+            'isi'        => 'required|string',
+            'jenis'      => 'required|in:karya,pengumuman,berita,cerpen,puisi,lainnya',
+            'gambar'     => 'nullable|image|max:3072',
+            'status'     => 'nullable|in:draft,publish',
             'lampiran.*' => 'nullable|file|max:5120',
         ]);
 
         $user      = Auth::user();
         $sekolahId = $this->getSekolahId();
-        $slug      = Str::slug($request->judul) . '-' . Str::random(6);
 
-        // Sekolah: langsung approved | Siswa: pending
+        // Pastikan sekolahId ada (double-check)
+        abort_if(is_null($sekolahId), 403, 'Tidak dapat menentukan sekolah Anda.');
+
+        $slug = Str::slug($request->judul) . '-' . Str::random(6);
+
+        // Admin sekolah → langsung approved | Siswa → pending, selalu draft dulu
         $approvalStatus = $this->isSekolahAdmin() ? 'approved' : 'pending';
         $status         = $this->isSekolahAdmin() ? ($request->status ?? 'publish') : 'draft';
 
@@ -127,15 +200,15 @@ class MadingController extends Controller
         }
 
         $mading = Mading::create([
-            'id_user'         => $user->id,
-            'id_sekolah'      => $sekolahId,
-            'judul'           => $request->judul,
-            'isi'             => $request->isi,
-            'jenis'           => $request->jenis,
-            'slug'            => $slug,
-            'gambar'          => $gambarPath,
-            'status'          => $status,
-            'approval_status' => $approvalStatus,
+            'id_user'           => $user->id,
+            'id_sekolah'        => $sekolahId,
+            'judul'             => $request->judul,
+            'isi'               => $request->isi,
+            'jenis'             => $request->jenis,
+            'slug'              => $slug,
+            'gambar'            => $gambarPath,
+            'status'            => $status,
+            'approval_status'   => $approvalStatus,
             'tanggal_publikasi' => $status === 'publish' ? now() : null,
         ]);
 
@@ -188,7 +261,7 @@ class MadingController extends Controller
             'lampiran.*' => 'nullable|file|max:5120',
         ]);
 
-        // Jika siswa edit → approval kembali ke pending
+        // Jika siswa edit → approval kembali ke pending, status kembali ke draft
         $approvalStatus = $this->isSekolahAdmin()
             ? $mading->approval_status
             : 'pending';
@@ -205,12 +278,12 @@ class MadingController extends Controller
         }
 
         $mading->update([
-            'judul'           => $request->judul,
-            'isi'             => $request->isi,
-            'jenis'           => $request->jenis,
-            'gambar'          => $gambarPath,
-            'status'          => $status,
-            'approval_status' => $approvalStatus,
+            'judul'             => $request->judul,
+            'isi'               => $request->isi,
+            'jenis'             => $request->jenis,
+            'gambar'            => $gambarPath,
+            'status'            => $status,
+            'approval_status'   => $approvalStatus,
             'tanggal_publikasi' => ($status === 'publish' && $mading->status !== 'publish')
                 ? now()
                 : $mading->tanggal_publikasi,
@@ -239,6 +312,44 @@ class MadingController extends Controller
         return redirect()->route('mading.index')->with('success', $msg);
     }
 
+    // ── SHOW → redirect ke halaman publik ────────────────────────
+    // Tidak perlu view terpisah; cukup arahkan ke route home.mading.detail
+    // yang sudah ada dan menggunakan slug sebagai parameter.
+
+    public function show($id_mading)
+    {
+        $mading = Mading::findOrFail($id_mading);
+        $this->authorizeAccess($mading);
+
+        return redirect()->route('home.mading.detail', ['slug' => $mading->slug]);
+    }
+
+    // ── TOGGLE PUBLISH / DRAFT ────────────────────────────────────
+
+    public function toggle($id_mading)
+    {
+        // Hanya admin sekolah yang boleh toggle
+        $sekolahId = $this->requireSekolahAdmin();
+
+        $mading = Mading::where('id_sekolah', $sekolahId)->findOrFail($id_mading);
+
+        // Hanya mading yang sudah approved boleh di-toggle
+        abort_if($mading->approval_status !== 'approved', 403, 'Hanya mading yang sudah disetujui dapat diaktifkan/dinonaktifkan.');
+
+        $newStatus = $mading->status === 'publish' ? 'draft' : 'publish';
+
+        $mading->update([
+            'status'            => $newStatus,
+            'tanggal_publikasi' => $newStatus === 'publish' ? now() : $mading->tanggal_publikasi,
+        ]);
+
+        $msg = $newStatus === 'publish'
+            ? 'Mading berhasil diaktifkan (publish).'
+            : 'Mading berhasil dinonaktifkan (draft).';
+
+        return redirect()->back()->with('success', $msg);
+    }
+
     // ── DESTROY ──────────────────────────────────────────────────
 
     public function destroy($id_mading)
@@ -246,10 +357,8 @@ class MadingController extends Controller
         $mading = Mading::with('lampiran')->findOrFail($id_mading);
         $this->authorizeAccess($mading);
 
-        // Hapus gambar sampul
         if ($mading->gambar) Storage::disk('public')->delete($mading->gambar);
 
-        // Hapus semua lampiran
         foreach ($mading->lampiran as $lamp) {
             Storage::disk('public')->delete($lamp->path);
         }
@@ -259,13 +368,15 @@ class MadingController extends Controller
         return redirect()->route('mading.index')->with('success', 'Mading berhasil dihapus.');
     }
 
-    // ── APPROVE (Sekolah approve mading siswa) ───────────────────
+    // ── APPROVE ──────────────────────────────────────────────────
 
     public function approve($id_mading)
     {
-        abort_unless($this->isSekolahAdmin(), 403);
+        // Pastikan admin sekolah & punya data sekolah
+        $sekolahId = $this->requireSekolahAdmin();
 
-        $mading = Mading::where('id_sekolah', $this->getSekolahId())->findOrFail($id_mading);
+        // Mading harus milik sekolah yang sama dengan admin yang login
+        $mading = Mading::where('id_sekolah', $sekolahId)->findOrFail($id_mading);
 
         $mading->update([
             'approval_status'   => 'approved',
@@ -277,17 +388,19 @@ class MadingController extends Controller
         return redirect()->back()->with('success', 'Mading berhasil disetujui dan dipublikasikan.');
     }
 
-    // ── REJECT (Sekolah tolak mading siswa) ─────────────────────
+    // ── REJECT ───────────────────────────────────────────────────
 
     public function reject(Request $request, $id_mading)
     {
-        abort_unless($this->isSekolahAdmin(), 403);
+        // Pastikan admin sekolah & punya data sekolah
+        $sekolahId = $this->requireSekolahAdmin();
 
         $request->validate([
             'alasan_penolakan' => 'required|string|max:500',
         ]);
 
-        $mading = Mading::where('id_sekolah', $this->getSekolahId())->findOrFail($id_mading);
+        // Mading harus milik sekolah yang sama dengan admin yang login
+        $mading = Mading::where('id_sekolah', $sekolahId)->findOrFail($id_mading);
 
         $mading->update([
             'approval_status'  => 'rejected',
@@ -341,16 +454,42 @@ class MadingController extends Controller
 
     // ── PRIVATE: Cek akses ───────────────────────────────────────
 
-    private function authorizeAccess(Mading $mading)
+    /**
+     * Aturan akses:
+     * - Admin sekolah: bisa akses semua mading di sekolahnya SENDIRI
+     *   (id_sekolah mading == id_sekolah dari dataSekolah admin)
+     * - Siswa: hanya bisa akses mading miliknya sendiri
+     *   (id_user mading == id user yang login)
+     *
+     * Pengecekan ganda (sekolah + user) mencegah admin sekolah A
+     * mengakses mading di sekolah B.
+     */
+    private function authorizeAccess(Mading $mading): void
     {
         $user      = Auth::user();
         $sekolahId = $this->getSekolahId();
 
-        // Sekolah bisa akses semua mading di sekolahnya
-        if ($this->isSekolahAdmin() && $mading->id_sekolah === $sekolahId) return;
+        if ($this->isSekolahAdmin()) {
+            // Admin harus punya data sekolah dan sekolah harus cocok
+            abort_if(
+                is_null($sekolahId) || (int) $mading->id_sekolah !== $sekolahId,
+                403,
+                'Anda tidak memiliki akses ke mading ini.'
+            );
+            return;
+        }
 
-        // Siswa hanya akses mading miliknya
-        if ($this->isSiswa() && $mading->id_user === $user->id) return;
+        if ($this->isSiswa()) {
+            // Siswa hanya bisa akses mading miliknya
+            // Tambahan: pastikan mading berada di sekolah yang sama dengan siswa
+            abort_if(
+                (int) $mading->id_user !== (int) $user->id
+                    || (int) $mading->id_sekolah !== (int) $sekolahId,
+                403,
+                'Anda tidak memiliki akses ke mading ini.'
+            );
+            return;
+        }
 
         abort(403, 'Anda tidak memiliki akses ke mading ini.');
     }

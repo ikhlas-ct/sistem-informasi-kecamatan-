@@ -18,11 +18,6 @@ class SiswaController extends Controller
 {
     // ─────────────────────────────────────────────────────────
     // HELPER: deteksi role user yang login
-    //
-    //   camat / staf_camat        → isSuperAdmin
-    //   wali_nagari / staf_nagari → isNagari
-    //   admin_sekolah             → isAdminSekolah
-    //                               (role=masyarakat, sekolah='admin')
     // ─────────────────────────────────────────────────────────
     private function getRoleInfo(): array
     {
@@ -67,7 +62,6 @@ class SiswaController extends Controller
 
         $query = Siswa::with(['sekolah.nagari', 'user.masyarakat'])->latest();
 
-        // Scope data per role
         if ($isAdminSekolah) {
             $query->where('id_sekolah', $sekolahAdmin?->id_sekolah);
         } elseif ($isNagari) {
@@ -75,7 +69,6 @@ class SiswaController extends Controller
             $query->whereIn('id_sekolah', $ids);
         }
 
-        // Filter pencarian
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(function ($q) use ($s) {
@@ -97,7 +90,6 @@ class SiswaController extends Controller
 
         $siswa = $query->paginate(15)->withQueryString();
 
-        // Statistik
         $statQ = Siswa::query();
         if ($isAdminSekolah) {
             $statQ->where('id_sekolah', $sekolahAdmin?->id_sekolah);
@@ -105,7 +97,7 @@ class SiswaController extends Controller
             $ids = Sekolah::where('id_nagari', $idNagariUser)->pluck('id_sekolah');
             $statQ->whereIn('id_sekolah', $ids);
         }
-        $totalSiswa   = $statQ->count();
+        $totalSiswa    = $statQ->count();
         $totalPerKelas = (clone $statQ)
             ->selectRaw('kelas, count(*) as total')
             ->whereNotNull('kelas')
@@ -113,7 +105,6 @@ class SiswaController extends Controller
             ->orderBy('kelas')
             ->pluck('total', 'kelas');
 
-        // Dropdown filter
         $nagariList  = $isSuperAdmin ? Nagari::orderBy('nama_nagari')->get() : collect();
         $sekolahList = collect();
         if ($isSuperAdmin) {
@@ -160,9 +151,6 @@ class SiswaController extends Controller
             $nagariLocked  = $sekolahAdmin?->nagari;
         }
 
-        $masyarakatList = $this->getMasyarakatTersedia();
-        $nagariAllList  = Nagari::orderBy('nama_nagari')->get(); // untuk dropdown nagari di form buat baru
-
         return view('pages.siswa.create', compact(
             'roleLabel',
             'isSuperAdmin',
@@ -170,14 +158,12 @@ class SiswaController extends Controller
             'isAdminSekolah',
             'nagariList',
             'sekolahLocked',
-            'nagariLocked',
-            'masyarakatList',
-            'nagariAllList'
+            'nagariLocked'
         ));
     }
 
     // ─────────────────────────────────────────────────────────
-    // STORE
+    // STORE  (hanya mode "pilih dari masyarakat")
     // ─────────────────────────────────────────────────────────
     public function store(Request $request)
     {
@@ -187,78 +173,41 @@ class SiswaController extends Controller
         abort_if(! $isSuperAdmin && ! $isNagari && ! $isAdminSekolah, 403);
 
         $allowedSekolahIds = $this->allowedSekolahIds($info);
-        $mode = $request->input('mode_akun', 'pilih'); // 'pilih' | 'baru'
 
-        // ── Aturan validasi umum ──
-        $rules = [
-            'mode_akun'  => 'required|in:pilih,baru',
+        $validated = $request->validate([
             'id_sekolah' => ['required', Rule::in($allowedSekolahIds)],
             'nis'        => 'nullable|string|max:20|unique:siswa,nis',
             'kelas'      => 'nullable|string|max:20',
-        ];
 
-        if ($mode === 'pilih') {
-            // Pilih masyarakat yang sudah ada
-            $rules['id_user_masyarakat'] = [
+            // Wajib pilih masyarakat yang:
+            //   - role = masyarakat
+            //   - sekolah IS NULL (belum jadi siswa/admin manapun)
+            //   - belum punya record siswa
+            'id_user_masyarakat' => [
                 'required',
-                'exists:users,id',
-                // Pastikan user dipilih adalah masyarakat bukan admin sekolah
                 Rule::exists('users', 'id')->where(
-                    fn($q) =>
-                    $q->where('role', 'masyarakat')
-                        ->where(fn($q2) => $q2->whereNull('sekolah')->orWhere('sekolah', 'siswa'))
+                    fn($q) => $q->where('role', 'masyarakat')->whereNull('sekolah')
                 ),
-            ];
-        } else {
-            // Buat akun + data masyarakat baru
-            $rules['nik']              = 'required|string|size:16|unique:users,nip_nik|unique:masyarakat,nik';
-            $rules['password']         = 'required|string|min:6|confirmed';
-            $rules['nama_masyarakat']  = 'required|string|max:100';
-            $rules['kk']               = 'required|string|max:16';
-            $rules['no_hp']            = 'nullable|string|max:20';
-            $rules['jenis_kelamin']    = 'nullable|in:laki-laki,perempuan';
-            $rules['id_nagari_masy']   = 'nullable|exists:nagari,id';
-            $rules['foto_profil']      = 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048';
-        }
+                // Extra: pastikan belum punya record siswa
+                function ($attribute, $value, $fail) {
+                    if (Siswa::where('id_user', $value)->exists()) {
+                        $fail('Masyarakat ini sudah terdaftar sebagai siswa.');
+                    }
+                },
+            ],
+        ], [
+            'id_user_masyarakat.required' => 'Pilih masyarakat terlebih dahulu.',
+            'id_user_masyarakat.exists'   => 'Masyarakat tidak valid atau sudah menjadi siswa/admin sekolah.',
+            'id_sekolah.required'         => 'Pilih sekolah terlebih dahulu.',
+            'id_sekolah.in'               => 'Sekolah tidak valid.',
+        ]);
 
-        $validated = $request->validate($rules);
+        DB::transaction(function () use ($validated) {
+            $idUser = (int) $validated['id_user_masyarakat'];
 
-        DB::transaction(function () use ($validated, $request, $mode) {
-            if ($mode === 'pilih') {
-                // ── Gunakan user masyarakat yang ada ──
-                $idUser = (int) $validated['id_user_masyarakat'];
-                User::where('id', $idUser)->update(['sekolah' => 'siswa']);
-            } else {
-                // ── Buat user baru ──
-                $newUser = User::create([
-                    'nip_nik'  => $validated['nik'],
-                    'password' => Hash::make($validated['password']),
-                    'role'     => 'masyarakat',
-                    'sekolah'  => 'siswa',
-                    'status'   => 'aktif',
-                ]);
-                $idUser = $newUser->id;
+            // Tandai user sebagai siswa sekolah
+            User::where('id', $idUser)->update(['sekolah' => 'siswa']);
 
-                // ── Buat data masyarakat ──
-                $foto = null;
-                if ($request->hasFile('foto_profil')) {
-                    $foto = $request->file('foto_profil')
-                        ->store('foto_profil/masyarakat', 'public');
-                }
-
-                Masyarakat::create([
-                    'id_user'         => $idUser,
-                    'nik'             => $validated['nik'],
-                    'kk'              => $validated['kk'],
-                    'nama_masyarakat' => $validated['nama_masyarakat'],
-                    'no_hp'           => $validated['no_hp'] ?? null,
-                    'jenis_kelamin'   => $validated['jenis_kelamin'] ?? null,
-                    'id_nagari'       => $validated['id_nagari_masy'] ?? null,
-                    'foto_profil'     => $foto,
-                ]);
-            }
-
-            // ── Buat record siswa ──
             Siswa::create([
                 'id_user'    => $idUser,
                 'id_sekolah' => $validated['id_sekolah'],
@@ -315,8 +264,9 @@ class SiswaController extends Controller
             $nagariLocked  = $sekolahAdmin?->nagari;
         }
 
-        $masyarakatList = $this->getMasyarakatTersedia($siswa->id_user);
-        $nagariAllList  = Nagari::orderBy('nama_nagari')->get();
+        // Teks awal untuk Select2 (pre-populate pilihan saat ini)
+        $currentMasyarakatText = ($siswa->user?->masyarakat?->nama_masyarakat ?? $siswa->user?->nip_nik ?? '-')
+            . ' — ' . ($siswa->user?->nip_nik ?? '-');
 
         return view('pages.siswa.edit', compact(
             'siswa',
@@ -327,13 +277,12 @@ class SiswaController extends Controller
             'nagariList',
             'sekolahLocked',
             'nagariLocked',
-            'masyarakatList',
-            'nagariAllList'
+            'currentMasyarakatText'
         ));
     }
 
     // ─────────────────────────────────────────────────────────
-    // UPDATE
+    // UPDATE  (hanya mode "pilih dari masyarakat")
     // ─────────────────────────────────────────────────────────
     public function update(Request $request, Siswa $siswa)
     {
@@ -344,59 +293,60 @@ class SiswaController extends Controller
 
         $allowedSekolahIds = $this->allowedSekolahIds($info);
 
+        // Simpan id_user lama agar bisa dipakai closure di bawah
+        $oldUserId = $siswa->id_user;
+
         $validated = $request->validate([
-            'id_sekolah'     => ['required', Rule::in($allowedSekolahIds)],
-            'nis'            => [
+            'id_sekolah' => ['required', Rule::in($allowedSekolahIds)],
+            'nis'        => [
                 'nullable',
                 'string',
                 'max:20',
-                Rule::unique('siswa', 'nis')->ignore($siswa->id_siswa, 'id_siswa')
+                Rule::unique('siswa', 'nis')->ignore($siswa->id_siswa, 'id_siswa'),
             ],
-            'kelas'          => 'nullable|string|max:20',
-            // Update data masyarakat (opsional, bisa dikosongkan)
-            'nama_masyarakat' => 'nullable|string|max:100',
-            'no_hp'          => 'nullable|string|max:20',
-            'jenis_kelamin'  => 'nullable|in:laki-laki,perempuan',
-            'id_nagari_masy' => 'nullable|exists:nagari,id',
-            'foto_profil'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'hapus_foto'     => 'nullable|boolean',
-            'password'       => 'nullable|string|min:6|confirmed',
+            'kelas' => 'nullable|string|max:20',
+
+            // Boleh pilih:
+            //   a) User yang sama (siswa ini sendiri) → sekolah='siswa'
+            //   b) Masyarakat bebas → sekolah IS NULL
+            // Tidak boleh: admin sekolah (sekolah='admin') atau siswa lain
+            'id_user_masyarakat' => [
+                'required',
+                Rule::exists('users', 'id')->where(function ($q) use ($oldUserId) {
+                    $q->where('role', 'masyarakat')
+                        ->where(function ($q2) use ($oldUserId) {
+                            // user saat ini (boleh tetap sama) ATAU masyarakat bebas
+                            $q2->where('id', $oldUserId)
+                                ->orWhereNull('sekolah');
+                        });
+                }),
+                // Extra: kalau bukan user yang sama, pastikan belum punya record siswa lain
+                function ($attribute, $value, $fail) use ($oldUserId) {
+                    $newId = (int) $value;
+                    if ($newId !== $oldUserId && Siswa::where('id_user', $newId)->exists()) {
+                        $fail('Masyarakat ini sudah terdaftar sebagai siswa di sekolah lain.');
+                    }
+                },
+            ],
+        ], [
+            'id_user_masyarakat.required' => 'Pilih masyarakat terlebih dahulu.',
+            'id_user_masyarakat.exists'   => 'Masyarakat tidak valid atau sudah menjadi admin sekolah.',
+            'id_sekolah.required'         => 'Pilih sekolah terlebih dahulu.',
+            'id_sekolah.in'               => 'Sekolah tidak valid.',
         ]);
 
-        DB::transaction(function () use ($validated, $request, $siswa) {
-            // Update password jika diisi
-            if (! empty($validated['password'])) {
-                $siswa->user->update(['password' => Hash::make($validated['password'])]);
+        DB::transaction(function () use ($validated, $siswa, $oldUserId) {
+            $newUserId = (int) $validated['id_user_masyarakat'];
+
+            if ($newUserId !== $oldUserId) {
+                // Lepaskan user lama → kembalikan ke masyarakat biasa
+                User::where('id', $oldUserId)->update(['sekolah' => null]);
+                // Tandai user baru sebagai siswa
+                User::where('id', $newUserId)->update(['sekolah' => 'siswa']);
             }
 
-            // Update data masyarakat
-            $masyarakat = $siswa->user?->masyarakat;
-            if ($masyarakat) {
-                $foto = $masyarakat->foto_profil;
-
-                if ($request->boolean('hapus_foto') && $foto) {
-                    Storage::disk('public')->delete($foto);
-                    $foto = null;
-                }
-                if ($request->hasFile('foto_profil')) {
-                    if ($foto) Storage::disk('public')->delete($foto);
-                    $foto = $request->file('foto_profil')
-                        ->store('foto_profil/masyarakat', 'public');
-                }
-
-                $masyarakatData = array_filter([
-                    'nama_masyarakat' => $validated['nama_masyarakat'] ?? $masyarakat->nama_masyarakat,
-                    'no_hp'           => $validated['no_hp'] ?? $masyarakat->no_hp,
-                    'jenis_kelamin'   => $validated['jenis_kelamin'] ?? $masyarakat->jenis_kelamin,
-                    'id_nagari'       => $validated['id_nagari_masy'] ?? $masyarakat->id_nagari,
-                    'foto_profil'     => $foto,
-                ], fn($v) => ! is_null($v));
-
-                $masyarakat->update($masyarakatData);
-            }
-
-            // Update data siswa
             $siswa->update([
+                'id_user'    => $newUserId,
                 'id_sekolah' => $validated['id_sekolah'],
                 'nis'        => $validated['nis'] ?? null,
                 'kelas'      => $validated['kelas'] ?? null,
@@ -425,7 +375,6 @@ class SiswaController extends Controller
             $user = User::find($userId);
             if ($user) {
                 // Kembalikan ke masyarakat biasa
-                // Jika tidak ada data masyarakat (akun dibuat khusus saat daftar siswa), hapus user
                 if (! $user->masyarakat) {
                     $user->delete();
                 } else {
@@ -461,7 +410,16 @@ class SiswaController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────
-    // AJAX – cari masyarakat tersedia (belum jadi siswa)
+    // AJAX – cari masyarakat tersedia (Select2)
+    //
+    // Filter:
+    //   - role = masyarakat
+    //   - sekolah IS NULL  (bukan admin/siswa manapun)
+    //   - belum punya record siswa
+    //
+    // Parameter GET opsional: ?exclude_user_id=X
+    //   → digunakan di halaman EDIT agar user saat ini
+    //     tetap muncul sebagai pilihan walaupun sekolah='siswa'
     // ─────────────────────────────────────────────────────────
     public function ajaxMasyarakat(Request $request)
     {
@@ -470,15 +428,21 @@ class SiswaController extends Controller
 
         abort_if(! $isSuperAdmin && ! $isNagari && ! $isAdminSekolah, 403);
 
-        $q = $request->get('q', '');
+        $q             = $request->get('q', '');
+        $excludeUserId = (int) $request->get('exclude_user_id', 0);
 
-        // Hanya user dengan:
-        //   role = masyarakat
-        //   sekolah IS NULL  → belum jadi admin ('admin') maupun siswa ('siswa')
-        //   belum punya record di tabel siswa
         $query = User::where('role', 'masyarakat')
-            ->whereNull('sekolah')
-            ->whereDoesntHave('siswa')
+            ->where(function ($sub) use ($excludeUserId) {
+                // Masyarakat bebas
+                $sub->where(function ($free) {
+                    $free->whereNull('sekolah')
+                        ->whereDoesntHave('siswa');
+                });
+                // Khusus edit: sertakan user yang sedang terhubung ke siswa ini
+                if ($excludeUserId) {
+                    $sub->orWhere('id', $excludeUserId);
+                }
+            })
             ->with('masyarakat');
 
         if ($q) {
@@ -486,8 +450,7 @@ class SiswaController extends Controller
                 $sub->where('nip_nik', 'like', "%$q%")
                     ->orWhereHas(
                         'masyarakat',
-                        fn($m) =>
-                        $m->where('nama_masyarakat', 'like', "%$q%")
+                        fn($m) => $m->where('nama_masyarakat', 'like', "%$q%")
                     );
             });
         }
@@ -545,45 +508,5 @@ class SiswaController extends Controller
         }
 
         abort(403);
-    }
-
-    /**
-     * Daftar user masyarakat yang tersedia untuk dijadikan siswa.
-     *
-     * Syarat agar user BISA dipilih:
-     *   1. role = 'masyarakat'
-     *   2. kolom sekolah IS NULL
-     *        → sekolah = 'admin' berarti sudah jadi admin sekolah   → TIDAK boleh dipilih
-     *        → sekolah = 'siswa' berarti sudah jadi siswa aktif     → TIDAK boleh dipilih
-     *        → sekolah IS NULL   berarti masyarakat biasa           → BOLEH dipilih
-     *   3. Belum punya record di tabel siswa (double check)
-     *
-     * $excludeUserId → khusus untuk halaman EDIT:
-     *   user yang sedang terhubung ke siswa yang diedit tetap
-     *   dimunculkan di dropdown meskipun sekolah-nya = 'siswa'.
-     */
-    private function getMasyarakatTersedia(?int $excludeUserId = null)
-    {
-        return User::where('role', 'masyarakat')
-            ->where(function ($q) use ($excludeUserId) {
-                // User yang masih "bebas" (sekolah IS NULL & belum punya siswa)
-                $q->where(function ($free) {
-                    $free->whereNull('sekolah')
-                        ->whereDoesntHave('siswa');
-                });
-
-                // Khusus edit: sertakan juga user yang sedang terhubung ke siswa ini
-                if ($excludeUserId) {
-                    $q->orWhere('id', $excludeUserId);
-                }
-            })
-            ->with('masyarakat')
-            ->orderBy('id')
-            ->get()
-            ->map(fn($u) => [
-                'id'   => $u->id,
-                'nama' => ($u->masyarakat?->nama_masyarakat ?? $u->nip_nik)
-                    . ' (' . $u->nip_nik . ')',
-            ]);
     }
 }

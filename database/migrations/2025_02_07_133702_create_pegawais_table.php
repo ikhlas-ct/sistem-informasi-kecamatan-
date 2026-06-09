@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('id_pegawai');
             $table->unsignedBigInteger('id_user');
             $table->foreign('id_user')->references('id')->on('users')->onDelete('cascade');
-            $table->enum('role', ['pegawai', 'camat']);
+            $table->enum('role', ['pegawai', 'camat'])->default('pegawai');
             $table->string('nama_pegawai');
             $table->string('alamat_pegawai')->nullable();
             $table->string('nohp_pegawai', 20)->nullable();
@@ -26,6 +26,9 @@ return new class extends Migration
             $table->text('instagram')->nullable();
             $table->text('twitter')->nullable();
             $table->text('facebook')->nullable();
+            $table->unsignedBigInteger('id_nagari')->nullable();
+            $table->foreign('id_nagari')->references('id')->on('nagari')->onDelete('set null');
+            $table->enum('jabatan_nagari', ['kepala_nagari', 'pegawai_nagari'])->nullable();
 
 
             $table->enum('jenis_kelamin', ['Laki-laki', 'Perempuan']);
