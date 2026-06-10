@@ -149,7 +149,7 @@ class PengaturanmasyarakatController extends Controller
             'twitter'         => ['nullable', 'url', 'max:255'],
             'facebook'        => ['nullable', 'url', 'max:255'],
             'foto_profil'     => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
-            'password'        => ['required', 'string', 'min:8', 'confirmed'],
+            'password'        => ['nullable', 'string', 'min:8', 'confirmed'],
         ];
 
         // Validasi nagari hanya jika super role (bebas pilih)
@@ -163,7 +163,9 @@ class PengaturanmasyarakatController extends Controller
             // 1. Buat User
             $user = User::create([
                 'nip_nik'  => $validated['nik'],
-                'password' => Hash::make($validated['password']),
+                'password' => !empty($validated['password'])
+                    ? Hash::make($validated['password'])
+                    : null,
                 'role'     => 'masyarakat',
                 'status'   => 'aktif',
             ]);

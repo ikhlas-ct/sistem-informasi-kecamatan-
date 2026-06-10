@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('nip_nik', 20)->unique();
-            $table->string('password');
+            $table->string('password')->nullable();
             $table->enum('role', ['camat', 'pegawai', 'masyarakat']);
             $table->enum('status', ['aktif', 'nonaktif'])->default('aktif');
             $table->enum('tipe_akun', ['admin', 'siswa'])

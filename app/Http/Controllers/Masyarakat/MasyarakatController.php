@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Masyarakat;
 
-
 use App\Models\Nagari;
 use App\Models\User;
 use App\Models\Masyarakat;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use App\Models\Kecamatansetting;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -18,205 +16,101 @@ class MasyarakatController extends Controller
 {
     public function dashboard()
     {
+        $user        = Auth::user();
+        $masyarakat  = $user->masyarakat;
 
-
-
-        $user = Auth::user();
-        $masyarakat = $user->masyarakat;
-
-
-        return view('pages.masyarakat.dashboard',compact('user','masyarakat'));
+        return view('pages.masyarakat.dashboard', compact('user', 'masyarakat'));
     }
 
-    // Menampilkan form pendaftaran
+    // ─────────────────────────────────────────────
+    // FORM PENDAFTARAN
+    // ─────────────────────────────────────────────
+
     public function create()
     {
-        $nagari = Nagari::all();
-        return view('pages.login.pendaftaran', compact('nagari'));
+        return view('pages.login.pendaftaran');
     }
 
-    // Menyimpan data masyarakat baru
+    // ─────────────────────────────────────────────
+    // PROSES PENDAFTARAN
+    // Alur:
+    //   1. Validasi input dasar
+    //   2. Cari NIK di tabel masyarakat
+    //   3. Cocokkan KK
+    //   4. Cek apakah akun sudah aktif (password ≠ null)
+    //   5. Jika belum aktif → buat / update user & link ke masyarakat
+    // ─────────────────────────────────────────────
+
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'nik' => 'required|string|size:16|unique:masyarakat,nik',
-            'kk' => 'required|string|size:16',
-            'nama_masyarakat' => 'required|string|max:255',
-            'nama_ibu' => 'nullable|string|max:255',
-            'jenis_kelamin' => 'required|in:L,P',
-            'no_hp' => 'nullable|string|max:20',
-            'alamat' => 'nullable|string|max:255',
-            'id_nagari' => 'required|exists:nagari,id',
-            'instagram' => 'nullable|string|max:100',
-            'twitter' => 'nullable|string|max:100',
-            'facebook' => 'nullable|string|max:100',
-            'deskripsi' => 'nullable|string',
-            'pekerjaan' => 'nullable|string|max:100',
-            // file upload
-            'scan_ktp' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'foto_diri_ktp' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
-            'scan_kk' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'akta_kelahiran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'foto_diri_akta' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
-            'foto_profil' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
+        // ── 1. Validasi input ──────────────────────────────────────────
+        $request->validate([
+            'nik'                   => 'required|string|size:16',
+            'kk'                    => 'required|string|size:16',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ], [
+            'nik.required'                  => 'NIK wajib diisi.',
+            'nik.size'                      => 'NIK harus tepat 16 digit.',
+            'kk.required'                   => 'Nomor KK wajib diisi.',
+            'kk.size'                       => 'Nomor KK harus tepat 16 digit.',
+            'password.required'             => 'Password wajib diisi.',
+            'password.min'                  => 'Password minimal 8 karakter.',
+            'password.confirmed'            => 'Konfirmasi password tidak cocok.',
+            'password_confirmation.required' => 'Konfirmasi password wajib diisi.',
         ]);
 
-        // Handle file upload
-        foreach (['scan_ktp', 'foto_diri_ktp', 'scan_kk', 'akta_kelahiran', 'foto_diri_akta', 'foto_profil'] as $field) {
-            if ($request->hasFile($field)) {
-                $validatedData[$field] = $request->file($field)->store('masyarakat/'.$field, 'public');
+        // ── 2. Cari masyarakat berdasarkan NIK ────────────────────────
+        $masyarakat = Masyarakat::where('nik', $request->nik)->first();
+
+        if (! $masyarakat) {
+            return back()
+                ->withErrors(['nik' => 'NIK tidak ditemukan dalam sistem. Hubungi petugas nagari Anda.'])
+                ->withInput();
+        }
+
+        // ── 3. Cocokkan Nomor KK ──────────────────────────────────────
+        if ($masyarakat->kk !== $request->kk) {
+            return back()
+                ->withErrors(['kk' => 'Nomor KK tidak sesuai dengan NIK yang terdaftar.'])
+                ->withInput();
+        }
+
+        // ── 4. Cek status akun ────────────────────────────────────────
+        if ($masyarakat->id_user) {
+            $existingUser = User::find($masyarakat->id_user);
+
+            if ($existingUser) {
+                // Password sudah di-set → akun aktif, tolak pendaftaran ulang
+                if (! is_null($existingUser->password)) {
+                    return back()
+                        ->withErrors(['nik' => 'Akun dengan NIK ini sudah aktif. Silakan login menggunakan akun Anda.'])
+                        ->withInput();
+                }
+
+                // Password masih null → aktifkan akun dengan set password
+                $existingUser->update([
+                    'password' => Hash::make($request->password),
+                    'status'   => 'aktif',
+                ]);
+
+                return redirect()->route('login')
+                    ->with('success', 'Akun berhasil diaktifkan! Silakan login dengan NIK dan password Anda.');
             }
         }
 
-        Masyarakat::create($validatedData);
-
-        return redirect()->route('masyarakat.index')
-            ->with('success', 'Data masyarakat berhasil ditambahkan!');
-    }
-
-
-
-    // Menampilkan daftar masyarakat (untuk admin)
-    public function index()
-    {
-        $masyarakat = Masyarakat::with('user')->get();
-        return view('masyarakat.index', compact('masyarakat'));
-    }
-
-    // Menampilkan detail masyarakat
-    public function show($id)
-    {
-        $masyarakat = Masyarakat::with('user')->findOrFail($id);
-        return view('masyarakat.show', compact('masyarakat'));
-    }
-
-    // Menampilkan form edit
-    public function edit($id)
-    {
-        $masyarakat = Masyarakat::with('user')->findOrFail($id);
-        return view('masyarakat.edit', compact('masyarakat'));
-    }
-
-    // Mengupdate data masyarakat
-    public function update(Request $request, $id)
-    {
-        $masyarakat = Masyarakat::findOrFail($id);
-
-        $validated = $request->validate([
-            'nama_masyarakat' => 'required|string|max:100',
-            'kk' => 'required|string|size:16',
-            'jenis_kelamin' => 'required|in:laki-laki,perempuan',
-            'no_hp' => 'required|string|max:20',
-            'nama_ibu' => 'nullable|string|max:255',
-            'alamat' => 'required|string',
-            'scan_ktp' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'scan_kk' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'foto_diri_ktp' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'foto_diri_kk' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'akta_kelahiran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'foto_profil' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'pekerjaan' => 'nullable|string|max:255',
-
+        // ── 5. Belum ada user sama sekali → buat user baru ────────────
+        $newUser = User::create([
+            'nip_nik'  => $request->nik,
+            'password' => Hash::make($request->password),
+            'role'     => 'masyarakat',
+            'status'   => 'aktif',
         ]);
 
-        try {
-            // Handle file uploads
-            $fileFields = [
-                'scan_ktp', 'scan_kk', 'foto_diri_ktp',
-                'foto_diri_kk', 'akta_kelahiran', 'foto_profil',
+        // Hubungkan user baru ke data masyarakat yang sudah ada
+        $masyarakat->update(['id_user' => $newUser->id]);
 
-            ];
-
-            $filePaths = [];
-            foreach ($fileFields as $field) {
-                if ($request->hasFile($field)) {
-                    // Hapus file lama jika ada
-                    if ($masyarakat->$field) {
-                        Storage::delete('public/' . $masyarakat->$field);
-                    }
-
-                    // Simpan file baru
-                    $path = $request->file($field)->store('public/masyarakat');
-                    $filePaths[$field] = str_replace('public/', '', $path);
-                }
-            }
-
-            // Update data masyarakat
-            $masyarakat->update([
-                'kk' => $validated['kk'],
-                'jenis_kelamin' => $validated['jenis_kelamin'],
-                'no_hp' => $validated['no_hp'],
-                'nama_masyarakat' => $validated['nama_masyarakat'],
-                'nama_ibu' => $validated['nama_ibu'] ?? null,
-                'alamat' => $validated['alamat'],
-                'scan_ktp' => $filePaths['scan_ktp'] ?? $masyarakat->scan_ktp,
-                'scan_kk' => $filePaths['scan_kk'] ?? $masyarakat->scan_kk,
-                'foto_diri_ktp' => $filePaths['foto_diri_ktp'] ?? $masyarakat->foto_diri_ktp,
-                'foto_diri_kk' => $filePaths['foto_diri_kk'] ?? $masyarakat->foto_diri_kk,
-                'akta_kelahiran' => $filePaths['akta_kelahiran'] ?? $masyarakat->akta_kelahiran,
-                'foto_profil' => $filePaths['foto_profil'] ?? $masyarakat->foto_profil,
-                'pekerjaan' => $validated['pekerjaan'] ?? null,
-            ]);
-
-            return redirect()->route('masyarakat.show', $masyarakat->id_masyarakat)
-                ->with('success', 'Data masyarakat berhasil diperbarui.');
-
-        } catch (\Exception $e) {
-            return back()->withInput()
-                ->with('error', 'Terjadi kesalahan saat memperbarui data. Silakan coba lagi.');
-        }
+        return redirect()->route('login')
+            ->with('success', 'Akun berhasil dibuat! Silakan login dengan NIK dan password Anda.');
     }
-
-    // Menghapus data masyarakat
-    public function destroy($id)
-    {
-        $masyarakat = Masyarakat::findOrFail($id);
-
-        try {
-            // Mulai transaksi database
-            \DB::beginTransaction();
-
-            // Hapus file-file yang terkait
-            $fileFields = [
-                'scan_ktp', 'scan_kk', 'foto_diri_ktp',
-                'foto_diri_kk', 'akta_kelahiran', 'foto_profil'
-            ];
-
-            foreach ($fileFields as $field) {
-                if ($masyarakat->$field) {
-                    Storage::delete('public/' . $masyarakat->$field);
-                }
-            }
-
-            // Hapus user terkait
-            User::where('id', $masyarakat->id_user)->delete();
-
-            // Hapus data masyarakat
-            $masyarakat->delete();
-
-            // Commit transaksi
-            \DB::commit();
-
-            return redirect()->route('masyarakat.index')
-                ->with('success', 'Data masyarakat berhasil dihapus.');
-
-        } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi error
-            \DB::rollBack();
-
-            return back()->with('error', 'Terjadi kesalahan saat menghapus data. Silakan coba lagi.');
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-
-
 }

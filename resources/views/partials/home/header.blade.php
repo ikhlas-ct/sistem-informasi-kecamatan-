@@ -76,7 +76,7 @@
                 </ul>
               </li>
 
-   
+
 
             <li><a href="{{ route('home.contact') }}">Contact</a></li>
 
@@ -102,7 +102,10 @@
                         </li>
                     </ul>
                 @else
-                <a href="{{ route('login') }}">Login</a>
+                    <li><a href="{{ route('login') }}">Login</a></li>
+                    <li><a href="{{ route('register') }}">Register</a></li>
+
+
 
                 @endif
             </li>

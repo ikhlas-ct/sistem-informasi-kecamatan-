@@ -271,18 +271,13 @@ class SekolahController extends Controller
             'id_nagari'    => $this->isPegawaiNagari() ? 'nullable' : 'required|exists:nagari,id',
             'id_user'      => 'required|exists:users,id',
             'nama_sekolah' => 'required|string|max:255',
-            'npsn'         => 'nullable|string|max:20|unique:sekolah,npsn',
+            'npsn'         => 'required|string|max:20|unique:sekolah,npsn',
             'jenjang'      => 'required|in:SD,SMP,SMA,SMK,MI,MTs,MA,TK,PAUD',
             'alamat'       => 'nullable|string|max:500',
             'no_hp'        => 'nullable|string|max:20',
             'email'        => 'nullable|email|max:255',
             'logo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'status'       => 'required|in:aktif,nonaktif',
-        ], [
-            'id_nagari.required'    => 'Nagari wajib dipilih.',
-            'id_user.required'      => 'Kepala Sekolah / Administrator wajib dipilih.',
-            'nama_sekolah.required' => 'Nama sekolah wajib diisi.',
-            'jenjang.required'      => 'Jenjang pendidikan wajib dipilih.',
         ]);
 
         $selectedUser = User::findOrFail($request->id_user);
@@ -452,7 +447,7 @@ class SekolahController extends Controller
             'id_nagari'    => $bisaPilihNagari ? 'required|exists:nagari,id' : 'nullable',
             'id_user'      => 'required|exists:users,id',
             'nama_sekolah' => 'required|string|max:255',
-            'npsn'         => 'nullable|string|max:20|unique:sekolah,npsn,' . $sekolah->id_sekolah . ',id_sekolah',
+            'npsn'         => 'required|string|max:20|unique:sekolah,npsn,' . $sekolah->id_sekolah . ',id_sekolah',
             'jenjang'      => 'required|in:SD,SMP,SMA,SMK,MI,MTs,MA,TK,PAUD',
             'alamat'       => 'nullable|string|max:500',
             'no_hp'        => 'nullable|string|max:20',
@@ -460,10 +455,6 @@ class SekolahController extends Controller
             'logo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             // Admin sekolah tidak bisa mengubah status
             'status'       => $isAdmin ? 'nullable|in:aktif,nonaktif' : 'required|in:aktif,nonaktif',
-        ], [
-            'id_nagari.required'    => 'Nagari wajib dipilih.',
-            'id_user.required'      => 'Administrator wajib dipilih.',
-            'nama_sekolah.required' => 'Nama sekolah wajib diisi.',
         ]);
 
         $newUserId = (int) $request->id_user;

@@ -292,6 +292,16 @@
                 </li>
 
                 <li class="nav-item">
+                    <a href="{{ route('camat.masyarakat.index') }}">
+                        <i class="fas fa-address-book"></i><p>Kependudukan</p>
+                    </a>
+                </li>
+
+
+     
+
+
+                <li class="nav-item">
                     <a data-bs-toggle="collapse" href="#konten">
                         <i class="fas fa-file-alt"></i><p>Konten</p><span class="caret"></span>
                     </a>

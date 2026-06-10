@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('masyarakat', function (Blueprint $table) {
             $table->id('id_masyarakat');
             $table->string('nik', 16)->unique();
-            $table->unsignedBigInteger('id_user');
+            $table->unsignedBigInteger('id_user')->unique()->nullable();
             $table->foreign('id_user')->references('id')->on('users')->onDelete('cascade');
             $table->string('kk', 16);
             $table->enum('jenis_kelamin', ['laki-laki', 'perempuan'])->nullable();;
@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('foto_diri_ktp',255)->nullable();
             $table->string('foto_diri_kk', 255)->nullable();
             $table->string('akta_kelahiran', 255)->nullable();
-            $table->string('foto_profil',255);
+            $table->string('foto_profil',255)->nullable();
 
             $table->timestamps();
         });

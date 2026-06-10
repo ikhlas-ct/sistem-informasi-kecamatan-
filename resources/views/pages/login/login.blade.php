@@ -61,9 +61,7 @@
                             <a href="{{ route('register') }}" class="link-primary text-decoration-none">
                                 Belum punya akun?
                             </a>
-                            <a href="{{ route('password.request') }}" class="link-primary text-decoration-none">
-                                Lupa password?
-                            </a>
+                          
                         </div>
                     </div>
                     <div class="col-12">

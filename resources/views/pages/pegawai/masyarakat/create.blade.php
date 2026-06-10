@@ -239,7 +239,7 @@
                         <div class="section-divider"><i class="fas fa-key"></i> Akun Login</div>
 
                         <div class="mb-3">
-                            <label>Password <span class="required-mark">*</span></label>
+                            <label>Password</label>
                             <div class="input-group">
                                 <input type="password" name="password" id="password"
                                        class="form-control @error('password') is-invalid @enderror"
@@ -253,7 +253,7 @@
                         </div>
 
                         <div class="mb-1">
-                            <label>Konfirmasi Password <span class="required-mark">*</span></label>
+                            <label>Konfirmasi Password</label>
                             <div class="input-group">
                                 <input type="password" name="password_confirmation" id="password_confirmation"
                                        class="form-control" placeholder="Ulangi password">
