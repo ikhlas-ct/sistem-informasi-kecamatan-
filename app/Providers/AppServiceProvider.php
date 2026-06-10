@@ -6,7 +6,6 @@ use Illuminate\Support\ServiceProvider;
 use App\Models\Kecamatansetting;
 use App\Models\Konten;
 use App\Models\Pengaduan;
-use App\Models\SuratKeteranganMiskin;
 use App\Models\Pegawai;
 use App\Models\Masyarakat;
 use Illuminate\Support\Facades\Cache;
@@ -44,7 +43,6 @@ class AppServiceProvider extends ServiceProvider
             // ── Default semua badge = 0 ───────────────────────────
             $pendingKonten         = 0;
             $pendingPengaduan      = 0;
-            $pendingSurat          = 0;
             $pendingKontenByJenis  = collect();
             $pendingKontenCombined = 0;
             $pendingPotensi        = 0;
@@ -153,28 +151,11 @@ class AppServiceProvider extends ServiceProvider
                         return $q->count();
                     }
                 );
-
-                $pendingSurat = Cache::remember(
-                    'pending_surat_' . $user->id,
-                    60,
-                    function () use ($isSuperAdmin, $allowedUserIds) {
-                        $q = SuratKeteranganMiskin::where('status', 'pending');
-                        if (! $isSuperAdmin && $allowedUserIds !== null) {
-                            $q->whereIn('id_masyarakat', function ($sub) use ($allowedUserIds) {
-                                $sub->select('id_masyarakat')
-                                    ->from('masyarakat')
-                                    ->whereIn('id_user', $allowedUserIds);
-                            });
-                        }
-                        return $q->count();
-                    }
-                );
             }
 
             $view->with(compact(
                 'pendingKonten',
                 'pendingPengaduan',
-                'pendingSurat',
                 'pendingKontenByJenis',
                 'pendingKontenCombined',
                 'pendingPotensi'
